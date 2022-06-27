@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <h1>loading test1: sea.min.js</h1>
+  <p>use global name:  sea </p>
+  <p>sea has SEA, RAND, MBP , Meta,,, </p>
+  <h1>loading test2: sea.esm.js</h1>
+  <p>embed esm module loader script.  check the console.</p>
+  <p>this index.html include module  two times. </p>
+  <script src="../dist/sea.min.js"></script>
+  <script type="module">
+    import {SEA, MBP ,sha256 } from "../dist/sea.esm.js"
+    console.log('SEA', SEA)
+    console.log('sha256.hash("hi")', sha256.hash('hi'))
+    console.log('MBP', MBP.Buffer.alloc(33))
+  </script>
+</body>
+</html>

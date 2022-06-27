@@ -1,0 +1,40 @@
+{
+  "name": "sea-js",
+  "version": "0.0.2",
+  "description": "Simple Encryption Algorithm",
+  "main": "dist/sea.cjs",
+  "cjs": "dist/sea.cjs",
+  "esm": "dist/sea.mjs",
+  "browser": "dist/sea.min.js",
+  "browser_esm": "dist/sea.esm.js",
+  "type": "module",
+  "exports": {
+    "import": "./dist/sea.mjs",
+    "require": "./dist/sea.cjs"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "keywords": [
+    "암호",
+    "cipher",
+    "crypto",
+    "encrypt"
+  ],
+  "homepage": "https://github.com/congtrol/sea-js#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/congtrol/sea-js.git"
+  },
+  "author": {
+    "name": "Dongeun Lee",
+    "email": "sixgen@gmail.com"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "mocha": "^10.0.0"
+  },
+  "dependencies": {
+    "meta-buffer-pack": "^1.2.1"
+  }
+}
