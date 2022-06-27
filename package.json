@@ -1,5 +1,5 @@
 {
-  "name": "sea-js",
+  "name": "sea256",
   "version": "0.0.2",
   "description": "Simple Encryption Algorithm",
   "main": "dist/sea.cjs",
@@ -21,10 +21,10 @@
     "crypto",
     "encrypt"
   ],
-  "homepage": "https://github.com/congtrol/sea-js#readme",
+  "homepage": "https://github.com/congtrol/sea256#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/congtrol/sea-js.git"
+    "url": "git+https://github.com/congtrol/sea256.git"
   },
   "author": {
     "name": "Dongeun Lee",
