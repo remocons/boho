@@ -7,15 +7,15 @@
   <title>Document</title>
 </head>
 <body>
-  <h1>loading test1: sea.min.js</h1>
-  <p>use global name:  sea </p>
-  <p>sea has SEA, RAND, MBP , Meta,,, </p>
-  <h1>loading test2: sea.esm.js</h1>
+  <h1>loading test1: boho.min.js</h1>
+  <p>use global name:  boho </p>
+  <p>boho has SEA, RAND, MBP , Meta,,, </p>
+  <h1>loading test2: boho.esm.js</h1>
   <p>embed esm module loader script.  check the console.</p>
   <p>this index.html include module  two times. </p>
-  <script src="../dist/sea.min.js"></script>
+  <script src="../dist/boho.min.js"></script>
   <script type="module">
-    import {SEA, MBP ,sha256 } from "../dist/sea.esm.js"
+    import {SEA, MBP ,sha256 } from "../dist/boho.esm.js"
     console.log('SEA', SEA)
     console.log('sha256.hash("hi")', sha256.hash('hi'))
     console.log('MBP', MBP.Buffer.alloc(33))

@@ -1,16 +1,16 @@
 {
-  "name": "sea256",
+  "name": "boho",
   "version": "0.0.2",
-  "description": "Simple Encryption Algorithm",
-  "main": "dist/sea.cjs",
-  "cjs": "dist/sea.cjs",
-  "esm": "dist/sea.mjs",
-  "browser": "dist/sea.min.js",
-  "browser_esm": "dist/sea.esm.js",
+  "description": "encryption tool",
+  "main": "dist/boho.cjs",
+  "cjs": "dist/boho.cjs",
+  "esm": "dist/boho.mjs",
+  "browser": "dist/boho.min.js",
+  "browser_esm": "dist/boho.esm.js",
   "type": "module",
   "exports": {
-    "import": "./dist/sea.mjs",
-    "require": "./dist/sea.cjs"
+    "import": "./dist/boho.mjs",
+    "require": "./dist/boho.cjs"
   },
   "scripts": {
     "test": "mocha"
@@ -21,10 +21,10 @@
     "crypto",
     "encrypt"
   ],
-  "homepage": "https://github.com/congtrol/sea256#readme",
+  "homepage": "https://github.com/congtrol/boho#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/congtrol/sea256.git"
+    "url": "git+https://github.com/congtrol/boho.git"
   },
   "author": {
     "name": "Dongeun Lee",
@@ -34,6 +34,7 @@
   "devDependencies": {
     "mocha": "^10.0.0"
   },
+  
   "dependencies": {
     "meta-buffer-pack": "^1.2.1"
   }

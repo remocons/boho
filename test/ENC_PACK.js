@@ -1,5 +1,5 @@
 import assert from 'assert/strict'
-import { SEA , MBP } from 'sea-js'
+import { SEA , MBP } from 'boho'
 
 describe('ENC_PACK', function () {
   describe('encryption and decryption', function () {

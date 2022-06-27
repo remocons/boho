@@ -1,5 +1,5 @@
 import assert from 'assert/strict'
-import { RAND } from 'sea-js'
+import { RAND } from 'boho'
 
 describe('RAND', function () {
   describe('for number', function () {

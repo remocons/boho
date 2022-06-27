@@ -1,5 +1,5 @@
 import assert from 'assert/strict'
-import { SEA , MBP , MetaSize, MsgType ,Meta } from 'sea-js'
+import { SEA , MBP , MetaSize, MsgType ,Meta } from 'boho'
 
 describe('AUTH process', function () {
 
