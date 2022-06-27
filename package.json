@@ -1,6 +1,6 @@
 {
   "name": "boho",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "encryption tool",
   "cjs": "dist/boho.cjs",
   "esm": "dist/boho.mjs",
@@ -33,7 +33,6 @@
   "devDependencies": {
     "mocha": "^10.0.0"
   },
-  
   "dependencies": {
     "meta-buffer-pack": "^1.2.1"
   }
