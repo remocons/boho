@@ -2,7 +2,6 @@
   "name": "boho",
   "version": "0.0.2",
   "description": "encryption tool",
-  "main": "dist/boho.cjs",
   "cjs": "dist/boho.cjs",
   "esm": "dist/boho.mjs",
   "browser": "dist/boho.min.js",
@@ -21,10 +20,10 @@
     "crypto",
     "encrypt"
   ],
-  "homepage": "https://github.com/congtrol/boho#readme",
+  "homepage": "https://github.com/congtrol/boho-js#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/congtrol/boho.git"
+    "url": "git+https://github.com/congtrol/boho-js.git"
   },
   "author": {
     "name": "Dongeun Lee",
