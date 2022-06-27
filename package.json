@@ -1,7 +1,7 @@
 {
   "name": "boho",
   "version": "0.0.3",
-  "description": "encryption tool",
+  "description": "encryption",
   "cjs": "dist/boho.cjs",
   "esm": "dist/boho.mjs",
   "browser": "dist/boho.min.js",
