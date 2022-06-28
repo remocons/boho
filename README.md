@@ -1,3 +1,3 @@
-# BOHO: Encryption Tool
+# BOHO: Encryption
 
 - In Development
