@@ -1,5 +1,5 @@
 import assert from 'assert/strict'
-import { SEA , MBP } from 'boho'
+import { Boho , MBP } from 'boho'
 
 describe('ENC_PACK', function () {
   describe('encryption and decryption', function () {
@@ -7,11 +7,11 @@ describe('ENC_PACK', function () {
     const key = 'key'
 
     it('should decryptPack.data property has same buffer of origin.', function () {
-      let sea = new SEA()
-      sea.setStrKey( key )
+      let boho = new Boho()
+      boho.set_key( key )
 
-      let encData = sea.encryptPack( plainData )
-      let decObj = sea.decryptPack( encData )
+      let encData = boho.encryptPack( plainData )
+      let decObj = boho.decryptPack( encData )
       
       let srcBuffer = MBP.B8( plainData )
       let resultBuffer = MBP.B8( decObj.data )

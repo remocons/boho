@@ -9,14 +9,13 @@
 <body>
   <h1>loading test1: boho.min.js</h1>
   <p>use global name:  boho </p>
-  <p>boho has SEA, RAND, MBP , Meta,,, </p>
+  <p>boho has RAND, MBP , Meta,,, </p>
   <h1>loading test2: boho.esm.js</h1>
   <p>embed esm module loader script.  check the console.</p>
   <p>this index.html include module  two times. </p>
   <script src="../dist/boho.min.js"></script>
   <script type="module">
-    import {SEA, MBP ,sha256 } from "../dist/boho.esm.js"
-    console.log('SEA', SEA)
+    import { MBP ,sha256 } from "../dist/boho.esm.js"
     console.log('sha256.hash("hi")', sha256.hash('hi'))
     console.log('MBP', MBP.Buffer.alloc(33))
   </script>
