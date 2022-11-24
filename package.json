@@ -1,6 +1,6 @@
 {
   "name": "boho",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "encryption",
   "cjs": "dist/boho.cjs",
   "esm": "dist/boho.mjs",
