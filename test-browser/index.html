@@ -14,10 +14,17 @@
   <p>embed esm module loader script.  check the console.</p>
   <p>this index.html include module  two times. </p>
   <script src="../dist/boho.min.js"></script>
+  <script>
+    console.log('min.js: sha256.hash("hi")', boho.sha256.hash('hi'))
+    console.log('min.js: MBP', boho.MBP.Buffer.alloc(33))
+    console.log('min.js: RAND', boho.RAND(33))
+    
+    </script>
   <script type="module">
-    import { MBP ,sha256 } from "../dist/boho.esm.js"
-    console.log('sha256.hash("hi")', sha256.hash('hi'))
-    console.log('MBP', MBP.Buffer.alloc(33))
+    import { MBP ,sha256 ,RAND } from "../dist/boho.esm.js"
+    console.log('esm: sha256.hash("hi")', sha256.hash('hi'))
+    console.log('esm: MBP', MBP.Buffer.alloc(33))
+    console.log('esm: RAND', RAND(33))
   </script>
 </body>
 </html>
