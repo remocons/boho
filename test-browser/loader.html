@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <h1>loading test1: boho.min.js</h1>
+  <p>use global name:  boho </p>
+  <p>boho has RAND, MBP , Meta,,, </p>
+  <h1>loading test2: boho.esm.js</h1>
+  <p>embed esm module loader script.  check the console.</p>
+  <p>this index.html include module  two times. </p>
+  <script src="../dist/boho.min.js"></script>
+  <script>
+    console.log('min.js: sha256.hash("hi")', BOHO.sha256.hash('hi'))
+    console.log('min.js: MBP', BOHO.MBP.Buffer.alloc(33))
+    console.log('min.js: RAND', BOHO.RAND(33))
+    console.log('min.js: isSecureContext', isSecureContext)
+    
+    </script>
+  <script type="module">
+    import { MBP ,sha256 ,RAND  } from "../dist/boho.esm.js"
+    console.log('esm: sha256.hash("hi")', sha256.hash('hi'))
+    console.log('esm: MBP', MBP.Buffer.alloc(33))
+    console.log('esm: RAND', RAND(33))
+  </script>
+</body>
+</html>

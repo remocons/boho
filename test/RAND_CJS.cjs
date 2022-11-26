@@ -1,7 +1,7 @@
-import assert from 'assert/strict'
-import { RAND } from 'boho'
+const assert = require('assert')
+const RAND = require('boho').RAND
 
-describe('RAND', function () {
+describe('RAND CJS', function () {
   describe('for number', function () {
     const num = 16
     it('should return Uint8Array', function () {

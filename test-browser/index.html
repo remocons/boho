@@ -1,30 +1,155 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
-</head>
-<body>
-  <h1>loading test1: boho.min.js</h1>
-  <p>use global name:  boho </p>
-  <p>boho has RAND, MBP , Meta,,, </p>
-  <h1>loading test2: boho.esm.js</h1>
-  <p>embed esm module loader script.  check the console.</p>
-  <p>this index.html include module  two times. </p>
-  <script src="../dist/boho.min.js"></script>
-  <script>
-    console.log('min.js: sha256.hash("hi")', boho.sha256.hash('hi'))
-    console.log('min.js: MBP', boho.MBP.Buffer.alloc(33))
-    console.log('min.js: RAND', boho.RAND(33))
-    
+  <head>
+    <meta charset="utf-8" />
+    <title>Mocha Tests</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="https://unpkg.com/mocha/mocha.css" />
+  </head>
+  <body>
+    <div id="mocha"></div>
+
+    <script src="https://unpkg.com/chai/chai.js"></script>
+    <script src="https://unpkg.com/mocha/mocha.js"></script>
+
+    <script class="mocha-init">
+      mocha.setup('bdd');
+      mocha.checkLeaks();
     </script>
-  <script type="module">
-    import { MBP ,sha256 ,RAND } from "../dist/boho.esm.js"
-    console.log('esm: sha256.hash("hi")', sha256.hash('hi'))
-    console.log('esm: MBP', MBP.Buffer.alloc(33))
-    console.log('esm: RAND', RAND(33))
-  </script>
-</body>
+    <script src="../dist/boho.min.js"></script>
+    <script>
+
+    let assert = chai.assert;
+    const RAND = BOHO.RAND
+    const Boho = BOHO.Boho
+    const MBP = BOHO.MBP
+    const MetaSize = BOHO.MetaSize
+    const BohoMsg = BOHO.BohoMsg
+    const Meta = BOHO.Meta
+
+    describe('RAND browser', function () {
+      describe('for number', function () {
+        const num = 16
+        it('should return Uint8Array', function () {
+          assert.ok(RAND(num) instanceof Uint8Array)
+        })
+
+        it('should return number-bytes size of Uint8Array', function () {
+          assert.ok(RAND(num).byteLength === num)
+        })
+      })
+    })
+
+    describe('ENC_PACK CJS', function () {
+      describe('encryption and decryption', function () {
+        const plainData = 'aaaaa'
+        const key = 'key'
+
+        it('should decryptPack.data property has same buffer of origin.', function () {
+          const boho = new Boho()
+          boho.set_key(key)
+
+          const encData = boho.encryptPack(plainData)
+          const decObj = boho.decryptPack(encData)
+
+          const srcBuffer = MBP.B8(plainData)
+          const resultBuffer = MBP.B8(decObj.data)
+
+          assert.ok(MBP.equal(srcBuffer, resultBuffer))
+        })
+      })
+    })
+
+
+    describe('AUTH process', function () {
+      const id = 'id'
+      const key = 'key'
+
+      // client side
+      const c = new Boho()
+      c.set_id8(id)
+      c.set_key(key)
+
+      // server side
+      const s = new Boho()
+      const auth_nonce_buffer = s.auth_nonce()
+      const auth_hmac_buffer = c.auth_hmac(auth_nonce_buffer)
+
+      const unpack = MBP.unpack(auth_hmac_buffer, Meta.AUTH_HMAC)
+
+      // Find hashID8 from DATABASE then set the  id and key.
+      s.set_id8(id)
+
+      s.set_key('wrong-key') // if key is wrong.
+      const check_auth_hmack_fail = s.check_auth_hmac(unpack)
+
+      s.set_key(key) // if correct.
+      const auth_ack_buffer = s.check_auth_hmac(unpack)
+
+      const auth_ack_buffer_with_incorrect_hmac = MBP.Buffer.alloc(9)
+      const isCorrectSeverHMAC = c.check_auth_ack_hmac(auth_ack_buffer)
+
+      auth_ack_buffer.copy(auth_ack_buffer_with_incorrect_hmac)
+      auth_ack_buffer_with_incorrect_hmac[2] ^= 0x55 // change hmac
+      const wrongSeverHMACResult = c.check_auth_ack_hmac(auth_ack_buffer_with_incorrect_hmac)
+
+      // 1. client send AUTH_REQ first
+
+      describe('2. sever reply AUTH_NONCE', function () {
+        it('should return static size buffer', function () {
+          assert.equal(auth_nonce_buffer.byteLength, MetaSize.AUTH_NONCE)
+        })
+
+        it('should pack[0] is header type ', function () {
+          assert.ok(auth_nonce_buffer[0], BohoMsg.AUTH_NONCE)
+        })
+      })
+
+      describe('3. client reply AUTH_HMAC', function () {
+        it('should return static size buffer', function () {
+          assert.equal(auth_hmac_buffer.byteLength, MetaSize.AUTH_HMAC)
+        })
+
+        it('should pack[0] is header type ', function () {
+          assert.ok(auth_hmac_buffer[0], BohoMsg.AUTH_HMAC)
+        })
+      })
+
+      describe('3. sever check  AUTH_HMACK pack', function () {
+        it('3.1. should success unpack', function () {
+          assert.ok(typeof unpack === 'object')
+        })
+
+        describe('3.2. check_auth_hmac(obj) ', function () {
+          // wrong key of id.
+          it('3.2.1. should return false when wrong key', function () {
+            assert.ok(!check_auth_hmack_fail)
+          })
+
+          // correct id and key
+          it('3-2.2. should return AUTH_ACK buffer pack when correct key', function () {
+            assert.equal(auth_ack_buffer[0], BohoMsg.AUTH_ACK)
+          })
+        })
+      })
+
+      describe('4. client process', function () {
+        describe('4.1 check_auth_ack_hmac()', function () {
+          it('should return true when correct AUTH_ACK ', function () {
+            assert.ok(isCorrectSeverHMAC)
+          })
+
+          it('should return false when  AUTH_ACK has wrong hmac', function () {
+            assert.ok(!wrongSeverHMACResult)
+          })
+        })
+      })
+    })
+
+    </script>
+
+    <script class="mocha-exec">
+      mocha.run();
+    </script>
+  </body>
 </html>
