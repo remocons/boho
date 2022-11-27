@@ -1,7 +1,7 @@
 {
   "name": "boho",
   "version": "0.1.0",
-  "description": "encryption",
+  "description": "Ultra Light Encryption System.",
   "cjs": "dist/boho.cjs",
   "esm": "dist/boho.mjs",
   "browser": "dist/boho.min.js",
@@ -15,15 +15,16 @@
     "test": "mocha"
   },
   "keywords": [
-    "암호",
     "cipher",
     "crypto",
-    "encrypt"
+    "encrypt",
+    "보호",
+    "암호"
   ],
-  "homepage": "https://github.com/congtrol/boho-js#readme",
+  "homepage": "https://github.com/congtrol/boho#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/congtrol/boho-js.git"
+    "url": "git+https://github.com/congtrol/boho.git"
   },
   "author": {
     "name": "Dongeun Lee",
