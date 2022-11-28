@@ -40,7 +40,7 @@ describe('AUTH process CJS', function () {
 
   // 1. client send AUTH_REQ first
 
-  describe('2. sever reply AUTH_NONCE', function () {
+  describe('2. server reply AUTH_NONCE', function () {
     it('should return static size buffer', function () {
       assert.equal(auth_nonce_buffer.byteLength, MetaSize.AUTH_NONCE)
     })
@@ -60,7 +60,7 @@ describe('AUTH process CJS', function () {
     })
   })
 
-  describe('3. sever check  AUTH_HMACK pack', function () {
+  describe('3. server check  AUTH_HMACK pack', function () {
     it('3.1. should success unpack', function () {
       assert.ok(typeof unpack === 'object')
     })

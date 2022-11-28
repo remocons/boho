@@ -1,7 +1,7 @@
 {
   "name": "boho",
   "version": "0.1.1",
-  "description": "Ultra Light Encryption System.",
+  "description": "Ultra Light SSL without RSA.",
   "cjs": "dist/boho.cjs",
   "esm": "dist/boho.mjs",
   "browser": "dist/boho.min.js",
@@ -15,6 +15,7 @@
     "test": "mocha"
   },
   "keywords": [
+    "SSL",
     "cipher",
     "crypto",
     "encrypt",
