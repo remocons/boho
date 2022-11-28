@@ -7,18 +7,16 @@
   <title>Document</title>
 </head>
 <body>
-  <h1>loading test1: boho.min.js</h1>
-  <p>use global name:  boho </p>
-  <p>boho has RAND, MBP , Meta,,, </p>
-  <h1>loading test2: boho.esm.js</h1>
-  <p>embed esm module loader script.  check the console.</p>
-  <p>this index.html include module  two times. </p>
+  <p>this page include boho module two times. </p>
+  <h1>1. IIFE: boho.min.js</h1>
+  <p>use global name:  BOHO </p>
+  <p>BOHO has props: RAND, MBP , sha256 ,, </p>
+  <h1>2. ES Module: boho.esm.js</h1>
   <script src="../dist/boho.min.js"></script>
   <script>
     console.log('min.js: sha256.hash("hi")', BOHO.sha256.hash('hi'))
     console.log('min.js: MBP', BOHO.MBP.Buffer.alloc(33))
     console.log('min.js: RAND', BOHO.RAND(33))
-    console.log('min.js: isSecureContext', isSecureContext)
     
     </script>
   <script type="module">
@@ -26,6 +24,8 @@
     console.log('esm: sha256.hash("hi")', sha256.hash('hi'))
     console.log('esm: MBP', MBP.Buffer.alloc(33))
     console.log('esm: RAND', RAND(33))
+
+    console.log('isSecureContext', isSecureContext)
   </script>
 </body>
 </html>
