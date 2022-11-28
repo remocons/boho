@@ -1,5 +1,4 @@
 # BOHO ( means Protection )
 
-Ultra Light Encryption System.
-
+- Ultra Light SSL without RSA.
 - In Development
