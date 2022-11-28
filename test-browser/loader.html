@@ -9,21 +9,22 @@
 <body>
   <p>this page include boho module two times. </p>
   <h1>1. IIFE: boho.min.js</h1>
-  <p>use global name:  BOHO </p>
-  <p>BOHO has props: RAND, MBP , sha256 ,, </p>
+  <p>use global name:  Boho </p>
+  <p>Boho has props: sha256, Buffer, RAND , MBP,, </p>
   <h1>2. ES Module: boho.esm.js</h1>
   <script src="../dist/boho.min.js"></script>
   <script>
-    console.log('min.js: sha256.hash("hi")', BOHO.sha256.hash('hi'))
-    console.log('min.js: MBP', BOHO.MBP.Buffer.alloc(33))
-    console.log('min.js: RAND', BOHO.RAND(33))
+    console.log('min.js: sha256.hash("hi")', Boho.sha256.hash('hi'))
+    console.log('min.js: Buffer', Boho.Buffer.alloc(33))
+    console.log('min.js: RAND', Boho.RAND(33))
     
     </script>
   <script type="module">
-    import { MBP ,sha256 ,RAND  } from "../dist/boho.esm.js"
+    import { sha256, Buffer, RAND,MBP } from "../dist/boho.esm.js"
     console.log('esm: sha256.hash("hi")', sha256.hash('hi'))
-    console.log('esm: MBP', MBP.Buffer.alloc(33))
+    console.log('esm: Buffer', Buffer.alloc(33))
     console.log('esm: RAND', RAND(33))
+    console.log('esm: MBP', MBP )
 
     console.log('isSecureContext', isSecureContext)
   </script>
