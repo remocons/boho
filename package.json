@@ -1,6 +1,6 @@
 {
   "name": "boho",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Ultra Light SSL without RSA.",
   "cjs": "dist/boho.cjs",
   "esm": "dist/boho.mjs",
