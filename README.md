@@ -1,6 +1,6 @@
 # Boho
 
-- Ultra Light SSL without RSA.
+- Ultra Light SSL without PKI.
 - ``boho`` means Protection 
 
 ## features
