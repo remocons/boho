@@ -1,6 +1,6 @@
 {
   "name": "boho",
-  "version": "0.2.1",
+  "version": "0.5.0",
   "description": "Ultra Light SSL without PKI.",
   "cjs": "dist/boho.cjs",
   "esm": "dist/boho.mjs",
@@ -12,13 +12,14 @@
     "require": "./dist/boho.cjs"
   },
   "scripts": {
+    "build": "rollup -c",
     "test": "mocha"
   },
   "keywords": [
     "SSL",
     "cipher",
     "crypto",
-    "encrypt",
+    "encryption",
     "보호",
     "암호"
   ],
@@ -33,7 +34,12 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "mocha": "^10.0.0"
+    "@rollup/plugin-commonjs": "^17.0.0",
+    "@rollup/plugin-node-resolve": "^11.1.0",
+    "@rollup/plugin-replace": "^4.0.0",
+    "@rollup/plugin-terser": "^0.4.0",
+    "mocha": "^10.0.0",
+    "rollup": "^2.74.1"
   },
   "dependencies": {
     "meta-buffer-pack": "^1.3.0"
