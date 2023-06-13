@@ -8,7 +8,7 @@
   "browser_esm": "dist/boho.esm.js",
   "type": "module",
   "exports": {
-    "import": "./dist/boho.mjs",
+    "import": "./src/boho.js",
     "require": "./dist/boho.cjs"
   },
   "scripts": {
