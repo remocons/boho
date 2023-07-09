@@ -50,29 +50,36 @@ export class Boho {
   }
 
   // for the self
+  set_hash_id8(data) {
+    let idSum = MBP.B8(sha256.hash(data))
+    idSum.copy(this._id8, 0, 0, 8)
+  }
+
   set_id8(data) {
     let encStr = MBP.B8(data)
     this._id8.fill(0)
     encStr.copy(this._id8, 0, 0, 8)
   }
 
-  set_hash_id8(data) {
-    let idSum = MBP.B8(sha256.hash(data))
-    idSum.copy(this._id8, 0, 0, 8)
-  }
-
-
   set_key(data) {
     let keySum = MBP.B8(sha256.hash(data))
     keySum.copy(this._otpSrc44, 0, 0, 32)
   }
 
-  // for the remote client.
+  //  id_key == 'id' + '.' + 'key' 
+  set_id_key(id_key) {
+    let delimiterPosition = id_key.indexOf('.')
+    if( delimiterPosition == -1 ) return
+    let id = id_key.substring(0, delimiterPosition)
+    let key = id_key.substring(delimiterPosition + 1)
+    this.set_id8(id)
+    this.set_key(key)
+  }
+
   copy_id8(data) {
     data.copy(this._id8, 0, 0, 8)
   }
 
-  // for the remote client.
   copy_key(data) {
     data.copy(this._otpSrc44, 0, 0, 32)
   }
