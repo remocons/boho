@@ -1,7 +1,7 @@
 {
   "name": "boho",
-  "version": "0.8.0",
-  "description": "Ultra Light SSL without PKI.",
+  "version": "0.8.1",
+  "description": "Encryption, authentication, Secure communication",
   "cjs": "dist/boho.cjs",
   "esm": "dist/boho.mjs",
   "browser": "dist/boho.min.js",
@@ -29,7 +29,7 @@
     "url": "git+https://github.com/congtrol/boho.git"
   },
   "author": {
-    "name": "Dongeun Lee",
+    "name": "Eun Lee",
     "email": "sixgen@gmail.com"
   },
   "license": "MIT",

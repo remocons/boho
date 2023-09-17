@@ -1,6 +1,5 @@
 node_modules/
 *.tgz
 .vscode/
-package-lock.json
 *.sh
 .DS_Store
