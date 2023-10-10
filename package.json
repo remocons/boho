@@ -23,13 +23,13 @@
     "보호",
     "암호"
   ],
-  "homepage": "https://github.com/congtrol/boho#readme",
+  "homepage": "https://github.com/remocons/boho#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/congtrol/boho.git"
+    "url": "git+https://github.com/remocons/boho.git"
   },
   "author": {
-    "name": "Eun Lee",
+    "name": "Lee Dongeun",
     "email": "sixgen@gmail.com"
   },
   "license": "MIT",
@@ -42,6 +42,6 @@
     "rollup": "^2.74.1"
   },
   "dependencies": {
-    "meta-buffer-pack": "^1.3.0"
+    "meta-buffer-pack": "^1.3.1"
   }
 }

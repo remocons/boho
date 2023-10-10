@@ -1,12 +1,16 @@
 # Boho
 
-- Ultra Light SSL without PKI.
+The Boho library implements cryptographic authentication protocols, secure communication, and general cryptography.
+
 - ``boho`` means Protection 
 
 ## features
 - general encryption.
 - authentication.
 - secure communication.
+- End-to-End Encryption with Symmetric.
+- support JS & C/C++ for Arduino.
+
 
 ## libraries
 - JavaScript: Node.js , Web Browser. [ [github](https://github.com/remocons/boho) ] 
