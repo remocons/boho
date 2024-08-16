@@ -1,4 +1,5 @@
-import assert from 'assert/strict'
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
 import { Boho, MBP, MetaSize, BohoMsg, Meta } from 'boho'
 
 describe('AUTH process ESM', function () {

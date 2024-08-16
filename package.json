@@ -1,6 +1,6 @@
 {
   "name": "boho",
-  "version": "0.8.2",
+  "version": "0.9.0",
   "description": "Encryption, authentication, Secure communication",
   "cjs": "dist/boho.cjs",
   "esm": "dist/boho.mjs",
@@ -10,10 +10,6 @@
   "exports": {
     "import": "./src/boho.js",
     "require": "./dist/boho.cjs"
-  },
-  "scripts": {
-    "build": "rollup -c",
-    "test": "mocha"
   },
   "keywords": [
     "SSL",
@@ -29,19 +25,14 @@
     "url": "git+https://github.com/remocons/boho.git"
   },
   "author": {
-    "name": "Lee Dongeun",
-    "email": "sixgen@gmail.com"
+    "name": "Taeo Lee",
+    "email": "taeo.mocha@gmail.com"
   },
   "license": "MIT",
-  "devDependencies": {
-    "@rollup/plugin-commonjs": "^17.0.0",
-    "@rollup/plugin-node-resolve": "^11.1.0",
-    "@rollup/plugin-replace": "^4.0.0",
-    "@rollup/plugin-terser": "^0.4.0",
-    "mocha": "^10.0.0",
-    "rollup": "^2.74.1"
-  },
   "dependencies": {
-    "meta-buffer-pack": "^1.3.1"
+    "meta-buffer-pack": "^1.4.0"
+  },
+  "scripts": {
+    "test": "node --test"
   }
 }

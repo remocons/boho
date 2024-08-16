@@ -1,4 +1,5 @@
-const assert = require('assert')
+const { describe, it } = require('node:test');
+const assert = require('node:assert');
 const RAND = require('boho').RAND
 
 describe('RAND CJS', function () {

@@ -11,7 +11,6 @@ The Boho library implements cryptographic authentication protocols, secure commu
 - End-to-End Encryption with Symmetric.
 - support JS & C/C++ for Arduino.
 
-
 ## libraries
 - JavaScript: Node.js , Web Browser. [ [github](https://github.com/remocons/boho) ] 
 - C/C++: Arduino [ [github](https://github.com/remocons/boho-arduino) ] 

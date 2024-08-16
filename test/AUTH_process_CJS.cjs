@@ -1,4 +1,5 @@
-const assert = require('assert')
+const { describe, it } = require('node:test');
+const assert = require('node:assert');
 const BOHO = require('boho')
 const Boho = BOHO.Boho
 const MBP = BOHO.MBP

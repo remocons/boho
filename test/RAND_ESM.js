@@ -1,4 +1,6 @@
-import assert from 'assert/strict'
+// import assert from 'assert/strict'
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
 import { RAND } from 'boho'
 
 describe('RAND ESM', function () {
