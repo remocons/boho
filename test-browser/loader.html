@@ -12,19 +12,21 @@
   <p>use global name:  Boho </p>
   <p>Boho has props: sha256, Buffer, RAND , MBP,, </p>
   <h1>2. ES Module: boho.esm.js</h1>
-  <script src="../dist/boho.min.js"></script>
+  <script src="../dist/boho.iife.js"></script>
   <script>
+    // console.log( Boho )
     console.log('min.js: sha256.hash("hi")', Boho.sha256.hash('hi'))
     console.log('min.js: Buffer', Boho.Buffer.alloc(33))
     console.log('min.js: RAND', Boho.RAND(33))
     
     </script>
   <script type="module">
-    import { sha256, Buffer, RAND,MBP } from "../dist/boho.esm.js"
-    console.log('esm: sha256.hash("hi")', sha256.hash('hi'))
-    console.log('esm: Buffer', Buffer.alloc(33))
-    console.log('esm: RAND', RAND(33))
-    console.log('esm: MBP', MBP )
+    import Boho from "../dist/boho.js"
+    // console.log(Boho)
+    console.log('esm: sha256.hash("hi")', Boho.sha256.hash('hi'))
+    console.log('esm: Buffer', Boho.Buffer.alloc(33))
+    console.log('esm: RAND', Boho.RAND(33))
+    console.log('esm: MBP', Boho.MBP )
 
     console.log('isSecureContext', isSecureContext)
   </script>

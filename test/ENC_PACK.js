@@ -1,6 +1,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { Boho, MBP } from 'boho'
+import Boho from 'boho'
+
+const MBP = Boho.MBP
+
 
 describe('ENC_PACK ESM', function () {
   describe('encryption and decryption', function () {

@@ -1,6 +1,5 @@
-import{ MBP, Buffer} from "meta-buffer-pack"
-const MB = MBP.MB
-
+import MBP from "meta-buffer-pack"
+import { Buffer } from 'buffer/index.js'
 
 // remocon message pack one byte header. 
 export let BohoMsg = {
@@ -20,45 +19,45 @@ for (let c in BohoMsg) { BohoMsg[BohoMsg[c]] = c }
 export const Meta = {
 
   AUTH_REQ: MBP.meta(  // 2
-    MB('header','8', 0),
-    MB('reserved','8', 0)
+    MBP.MB('header','8', 0),
+    MBP.MB('reserved','8', 0)
   ),
 
   AUTH_NONCE: MBP.meta(  // 13
-    MB('header','8', 0),
-    MB('unixTime','32L', 0),
-    MB('milTime','32L', 0 ),
-    MB('nonce', Buffer.alloc(4))
+    MBP.MB('header','8', 0),
+    MBP.MB('unixTime','32L', 0),
+    MBP.MB('milTime','32L', 0 ),
+    MBP.MB('nonce', Buffer.alloc(4))
   ),
 
   AUTH_HMAC: MBP.meta( // 45
-    MB('header','8', 0),
-    MB('id8',Buffer.alloc(8)),
-    MB('nonce', Buffer.alloc(4)),
-    MB('hmac32', Buffer.alloc(32))
+    MBP.MB('header','8', 0),
+    MBP.MB('id8',Buffer.alloc(8)),
+    MBP.MB('nonce', Buffer.alloc(4)),
+    MBP.MB('hmac32', Buffer.alloc(32))
   ),
     
   AUTH_ACK: MBP.meta( // 33
-    MB('header','8', 0),
-    MB('hmac32', Buffer.alloc(32))
+    MBP.MB('header','8', 0),
+    MBP.MB('hmac32', Buffer.alloc(32))
   ),
     
 
   ENC_PACK: MBP.meta(  //25 + payload
-    MB('type','8',0),
-    MB('len','32L',0),  // pure xdata size.  
-    MB('salt12', Buffer.alloc(12)),  // sec,mil,rand
-    MB('hmac',8,0)
-    // MB( 'xdata', encData )
+    MBP.MB('type','8',0),
+    MBP.MB('len','32L',0),  // pure xdata size.  
+    MBP.MB('salt12', Buffer.alloc(12)),  // sec,mil,rand
+    MBP.MB('hmac',8,0)
+    // MBP.MB( 'xdata', encData )
     ),
 
 
   ENC_488: MBP.meta(   // 21 + payload
-    MB('type','8', 0 ),
-    MB('len','32L', 0 ),
-    MB('otpSrc8', Buffer.alloc(8) ),
-    MB('hmac8', Buffer.alloc(8) )
-    // MB('xdata', encData ) 
+    MBP.MB('type','8', 0 ),
+    MBP.MB('len','32L', 0 ),
+    MBP.MB('otpSrc8', Buffer.alloc(8) ),
+    MBP.MB('hmac8', Buffer.alloc(8) )
+    // MBP.MB('xdata', encData ) 
     )
 
 

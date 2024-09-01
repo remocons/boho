@@ -1,4 +1,4 @@
-import { Boho, RAND, MBP, BohoMsg, Meta, MetaSize , sha256, Buffer } from './boho.js'
+import { Boho, RAND, BohoMsg, Meta, MetaSize, sha256, MBP, Buffer } from './boho.js'
 
 Boho.RAND = RAND;
 Boho.BohoMsg = BohoMsg;

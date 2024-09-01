@@ -1,9 +1,9 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const Boho = require('boho').Boho
-const MBP = require('boho').MBP
+const Boho = require('boho')
+const MBP = Boho.MBP
 
-describe('ENC_PACK CJS', function () {
+describe('ENC_PACK cjs', function () {
   describe('encryption and decryption', function () {
     const plainData = 'aaaaa'
     const key = 'key'

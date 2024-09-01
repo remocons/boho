@@ -1,28 +1,17 @@
 import { sha256 } from './sha256-mbp.js'
-import { MBP, Buffer } from 'meta-buffer-pack'
-export { sha256, MBP, Buffer }
-
-import { webcrypto } from 'crypto'
-import { BohoMsg, Meta, MetaSize } from "./constants.js"
-export { BohoMsg, Meta, MetaSize }
-
-let isNode = false
-try {
-  isNode = Object.prototype.toString.call(global.process) === '[object process]'
-} catch (e) { }
-
+import MBP from 'meta-buffer-pack'
+export { MBP }
+import { BohoMsg, Meta, MetaSize } from './constants.js'
+export { BohoMsg, Meta, MetaSize, sha256 }
+import { Buffer } from 'buffer/index.js'
+export { Buffer}
 
 export function RAND(size) {
-  if( isNode ){
-    return webcrypto.getRandomValues(Buffer.alloc(size))
-  }else{
-    return self.crypto.getRandomValues(Buffer.alloc(size))
-  }
+  return globalThis.crypto.getRandomValues(Buffer.alloc(size))
 }
 
-
-
 export class Boho {
+
   // A. Core
   constructor() {
 
@@ -462,3 +451,4 @@ export class Boho {
   }
 
 }
+

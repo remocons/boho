@@ -1,5 +1,5 @@
 import { hash, hmac } from '../lib/fast-sha256.js'
-import { MBP } from 'meta-buffer-pack'
+import MBP from 'meta-buffer-pack'
 
 /*
 Tip.

@@ -1,6 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { Boho, MBP, MetaSize, BohoMsg, Meta } from 'boho'
+import Boho from 'boho'
+
+const MBP = Boho.MBP
+const MetaSize = Boho.MetaSize
+const BohoMsg = Boho.BohoMsg
+const Meta = Boho.Meta
+
 
 describe('AUTH process ESM', function () {
   const id = 'id'
@@ -27,7 +33,7 @@ describe('AUTH process ESM', function () {
   s.set_key(key) // if correct.
   const auth_ack_buffer = s.check_auth_hmac(unpack)
 
-  const auth_ack_buffer_with_incorrect_hmac = MBP.Buffer.alloc(9)
+  const auth_ack_buffer_with_incorrect_hmac = Boho.Buffer.alloc(9)
   const isCorrectSeverHMAC = c.check_auth_ack_hmac(auth_ack_buffer)
 
   auth_ack_buffer.copy(auth_ack_buffer_with_incorrect_hmac)

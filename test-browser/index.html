@@ -15,7 +15,7 @@
       mocha.setup('bdd');
       mocha.checkLeaks();
     </script>
-    <script src="../dist/boho.min.js"></script>
+    <script src="../dist/boho.iife.js"></script>
     <script>
 
     let assert = chai.assert;
@@ -24,6 +24,7 @@
     const MetaSize = Boho.MetaSize
     const BohoMsg = Boho.BohoMsg
     const Meta = Boho.Meta
+    const Buffer = Boho.Buffer;
 
     describe('RAND browser', function () {
       describe('for number', function () {
