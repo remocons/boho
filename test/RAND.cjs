@@ -1,8 +1,8 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert';
-import Boho from 'boho'
+const { describe, it } = require('node:test');
+const assert = require('node:assert');
+const Boho = require('boho')
 
-describe('RAND ESM', function () {
+describe('RAND cjs', function () {
   describe('for number', function () {
     const num = 16
     it('should return Uint8Array', function () {

@@ -1,6 +1,6 @@
 {
   "name": "boho",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Encryption, authentication, Secure communication",
   "type": "module",
   "exports": {
@@ -34,7 +34,6 @@
     "rollup": "^4.21.2"
   },
   "dependencies": {
-    "buffer": "^6.0.3",
     "meta-buffer-pack": "^2.0.1"
   },
   "scripts": {
