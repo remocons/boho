@@ -29,12 +29,11 @@
   "devDependencies": {
     "@rollup/plugin-commonjs": "^26.0.1",
     "@rollup/plugin-node-resolve": "^15.2.3",
-    "@rollup/plugin-replace": "^5.0.7",
     "@rollup/plugin-terser": "^0.4.4",
     "rollup": "^4.21.2"
   },
   "dependencies": {
-    "meta-buffer-pack": "^2.0.1"
+    "meta-buffer-pack": "^2.0.2"
   },
   "scripts": {
     "build": "rollup -c",
