@@ -8,17 +8,17 @@
 </head>
 <body>
   <p>this page includes: </p>
-  <h1>1. IIFE: ../dist/boho.iife.js</h1>
+  <h1>1. UMD(IIFE): ../dist/boho.min.js</h1>
   <p>use global name:  Boho </p>
   <p>Boho has props: sha256, Buffer, RAND , MBP. </p>
   <h1>2. ES Module: ../dist/boho.js</h1>
 
-  <script src="../dist/boho.iife.js"></script>
+  <script src="../dist/boho.min.js"></script>
   <script>
     // console.log( Boho )
-    console.log('iife.js: sha256.hash("hi")', Boho.sha256.hash('hi'))
-    console.log('iife.js: Buffer', Boho.Buffer.alloc(33))
-    console.log('iife.js: RAND', Boho.RAND(33))
+    console.log('min.js: sha256.hash("hi")', Boho.sha256.hash('hi'))
+    console.log('min.js: Buffer', Boho.Buffer.alloc(33))
+    console.log('min.js: RAND', Boho.RAND(33))
     
     </script>
   <script type="module">

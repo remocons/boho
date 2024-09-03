@@ -55,12 +55,7 @@ The Boho library implements cryptographic authentication protocols, secure commu
 
 ## changelog Update
 
-### v1.0.0 : **Breaking Changes**
-- update module: `meta-buffer-pack` v2.x.x
+### v1.0.2 : 
 - dist/filename change
-  - IIFE for browser
-    - v0.9.0: boho.min.js
-    - v1.0.0: `boho.iife.js`
-  - ESM for browser
-    - v0.9.0: boho.esm.js
-    - v1.0.0: `boho.js`
+  - UMD(IIFE) for browser
+    - v1.0.2: `./dist/boho.min.js`

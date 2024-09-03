@@ -7,8 +7,8 @@ export default [
     input: './src/index.js',
     output: [
       {
-        file: './dist/boho.iife.js',
-        format: 'iife',
+        file: './dist/boho.min.js',
+        format: 'umd',
         name: 'Boho',
         sourcemap: true
       },
