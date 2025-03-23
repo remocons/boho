@@ -52,10 +52,3 @@ The Boho library implements cryptographic authentication protocols, secure commu
 
 ## license
 - MIT
-
-## changelog Update
-
-### v1.0.2 : 
-- dist/filename change
-  - UMD(IIFE) for browser
-    - v1.0.2: `./dist/boho.min.js`

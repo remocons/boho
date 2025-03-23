@@ -1,6 +1,6 @@
 {
   "name": "boho",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Encryption, authentication, Secure communication",
   "type": "module",
   "exports": {
@@ -32,10 +32,10 @@
     "@rollup/plugin-commonjs": "^26.0.1",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-terser": "^0.4.4",
-    "rollup": "^4.21.2"
+    "rollup": "^4.36.0"
   },
   "dependencies": {
-    "meta-buffer-pack": "^2.0.3"
+    "meta-buffer-pack": "^2.0.6"
   },
   "scripts": {
     "build": "rollup -c",
