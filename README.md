@@ -1,6 +1,8 @@
 # Boho
 
-The Boho library implements cryptographic authentication protocols, secure communication, and general cryptography.
+Secure Lightweight Encryption & Authentication Library for Node.js, Browsers and Arduino.
+
+Boho is a lightweight JavaScript library that provides easy-to-use encryption, authentication, and secure communication features. Designed for both Node.js and browser environments, Boho offers simple APIs for generating random values, hashing, HMAC, and secure message packing, making it ideal for IoT, embedded, and web applications that require robust security with minimal overhead.
 
 - ``boho`` means Protection 
 

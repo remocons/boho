@@ -6,13 +6,22 @@ export { BohoMsg, Meta, MetaSize, sha256 }
 import { Buffer } from 'buffer/index.js'
 export { Buffer}
 
+/**
+ * 랜덤 바이트 버퍼를 생성합니다.
+ * @param {number} size - 생성할 바이트 수
+ * @returns {Buffer}
+ */
 export function RAND(size) {
   return globalThis.crypto.getRandomValues(Buffer.alloc(size))
 }
 
+/**
+ * Boho 보안 프로토콜 클래스
+ */
 export class Boho {
-
-  // A. Core
+  /**
+   * @constructor
+   */
   constructor() {
 
     this._id8 = Buffer.alloc(8)
@@ -27,6 +36,9 @@ export class Boho {
 
   }
 
+  /**
+   * 인증 상태를 초기화합니다.
+   */
   clearAuth(){
     this._id8.fill(0)
     this._otpSrc44.fill(0)
@@ -38,24 +50,38 @@ export class Boho {
     this.isAuthorized = false
   }
 
-  // for the self
+  /**
+   * 입력 데이터를 해시하여 id8에 설정합니다.
+   * @param {any} data
+   */
   set_hash_id8(data) {
     let idSum = MBP.B8(sha256.hash(data))
     idSum.copy(this._id8, 0, 0, 8)
   }
 
+  /**
+   * id8 값을 설정합니다.
+   * @param {any} data
+   */
   set_id8(data) {
     let encStr = MBP.B8(data)
     this._id8.fill(0)
     encStr.copy(this._id8, 0, 0, 8)
   }
 
+  /**
+   * 키 값을 해시하여 otpSrc44에 설정합니다.
+   * @param {any} data
+   */
   set_key(data) {
     let keySum = MBP.B8(sha256.hash(data))
     keySum.copy(this._otpSrc44, 0, 0, 32)
   }
 
-  //  id_key == 'id' + '.' + 'key' 
+  /**
+   * 'id.key' 문자열을 분리하여 id8과 key를 설정합니다.
+   * @param {string} id_key
+   */
   set_id_key(id_key) {
     let delimiterPosition = id_key.indexOf('.')
     if( delimiterPosition == -1 ) return
@@ -65,23 +91,37 @@ export class Boho {
     this.set_key(key)
   }
 
+  /**
+   * 외부에서 id8 값을 복사합니다.
+   * @param {Buffer} data
+   */
   copy_id8(data) {
     data.copy(this._id8, 0, 0, 8)
   }
 
+  /**
+   * 외부에서 key 값을 복사합니다.
+   * @param {Buffer} data
+   */
   copy_key(data) {
     data.copy(this._otpSrc44, 0, 0, 32)
   }
 
-
+  /**
+   * sha256 해시를 n번 반복 적용합니다.
+   * @param {any} srcData
+   * @param {number} n
+   * @returns {Uint8Array}
+   */
   sha256_n(srcData, n) {
     let hashSum = sha256.hash(srcData)
     for (let i = 0; i < n; i++) hashSum = sha256.hash(hashSum)
     return hashSum
   }
 
-
-  // useful general encryption  i.e. enc_pack
+  /**
+   * 랜덤 시계값(salt12)을 otpSrc44에 설정합니다.
+   */
   set_clock_rand() {
 
     let milTime = Date.now()
@@ -96,7 +136,10 @@ export class Boho {
     salt12.copy(this._otpSrc44, 32)
   }
 
-  // for secure communication sender. 
+  /**
+   * 주어진 nonce와 시계값을 otpSrc44에 설정합니다.
+   * @param {Buffer} nonce
+   */
   set_clock_nonce(nonce) {
     let milTime = Date.now()
     let secTime = parseInt(milTime / 1000)
@@ -110,34 +153,59 @@ export class Boho {
     salt12.copy(this._otpSrc44, 32)
   }
 
-
+  /**
+   * salt12 값을 otpSrc44에 설정합니다.
+   * @param {Buffer} salt12
+   */
   set_salt12(salt12) {
     salt12.copy(this._otpSrc44, 32)
   }
 
+  /**
+   * otp 값을 초기화합니다.
+   */
   resetOTP() {
     let otp32 = MBP.B8(sha256.hash(this._otpSrc44))
     otp32.copy(this._otp36, 0, 0, 32)
   }
 
+  /**
+   * 인덱스에 해당하는 OTP 값을 반환합니다.
+   * @param {number} otpIndex
+   * @returns {Uint8Array}
+   */
   getIndexOTP(otpIndex) {
     this._otp36.writeUInt32LE(otpIndex, 32)
     return sha256.hash(this._otp36)
   }
 
-
+  /**
+   * HMAC 값을 생성합니다.
+   * @param {Buffer} data
+   */
   generateHMAC(data) {
     let hmacSrc = Buffer.concat([this._otpSrc44, data])
     this._hmac = MBP.B8(sha256.hash(hmacSrc))
   }
 
-  // return 8 bytes of hash
+  /**
+   * 8바이트 HMAC 값을 반환합니다.
+   * @param {Buffer} data
+   * @returns {Buffer}
+   */
   getHMAC8(data) {
     let hmacSrc = Buffer.concat([this._otpSrc44, data])
     this._hmac = MBP.B8(sha256.hash(hmacSrc))
     return this._hmac.subarray(0, 8)
   }
 
+  /**
+   * OTP 기반 XOR 암호화/복호화
+   * @param {Buffer} data
+   * @param {number} [otpStartIndex=0]
+   * @param {boolean} [shareDataBuffer=false]
+   * @returns {Buffer}
+   */
   xotp(data, otpStartIndex = 0, shareDataBuffer = false) {
 
     data = MBP.B8(data, shareDataBuffer)
@@ -160,8 +228,10 @@ export class Boho {
 
   // B. AUTH process
 
-  // step 1
-  // client send AUTH_REQ
+  /**
+   * AUTH_REQ 메시지 생성
+   * @returns {Buffer}
+   */
   auth_req() {
     return MBP.pack(
       MBP.MB('#type', '8', BohoMsg.AUTH_REQ),
@@ -169,8 +239,10 @@ export class Boho {
     )
   }
 
-  // step 2
-  // server send AUTH_NONCE
+  /**
+   * AUTH_NONCE 메시지 생성
+   * @returns {Buffer}
+   */
   auth_nonce() {
     let now = Date.now()
     let unixTime = Math.floor(now / 1000)
@@ -189,26 +261,14 @@ export class Boho {
     return infoPack
   }
 
-
-  // step 3
-  // client send AUTH_HMAC
-  // input :  auth_nonce buffer
+  /**
+   * AUTH_HMAC 메시지 생성
+   * @param {Buffer} buffer
+   * @returns {Buffer|boolean}
+   */
   auth_hmac(buffer) {
     let auth_nonce = MBP.unpack(buffer, Meta.AUTH_NONCE)
     if (auth_nonce) {
-      // console.log(' auth nonce', auth_nonce )
-
-      // let now = Date.now()
-      // let localUTC= Math.floor( now/ 1000 )
-      // let localMilTime = now % 1000
-
-      // console.log('time server [sec]', auth_nonce.unixTime, auth_nonce.milTime )
-      // console.log('time client [sec]', localUTC , localMilTime )
-      // console.log('time diff client and server[sec]', auth_nonce.unixTime - localUTC )
-
-      // let serverSecMil = auth_nonce.unixTime * 1000 + auth_nonce.milTime
-      // console.log('time diff msec client and server[msec]', serverSecMil - now )
-
       let salt12 = Buffer.concat([
        MBP.NB('32L', auth_nonce.unixTime),
        MBP.NB('32L', auth_nonce.milTime),
@@ -218,18 +278,15 @@ export class Boho {
       this.set_salt12(salt12)
 
       this.localNonce = RAND(4)
-      // hmac( key, sec,mil,serverNonce, localNonce)
       this.generateHMAC(this.localNonce)
-
-      // let hmac8 = this._hmac.subarray(0, 8)
 
       this.remoteNonce = auth_nonce.nonce
 
-      let auth_hmac_buffer = MBP.pack( // 21 -> 45
+      let auth_hmac_buffer = MBP.pack(
        MBP.MB('#header', '8', BohoMsg.AUTH_HMAC),
        MBP.MB('#id8', this._id8),
        MBP.MB('#nonce', this.localNonce),
-       MBP.MB('#hmac32', this._hmac ), //full 32bytes hash
+       MBP.MB('#hmac32', this._hmac ),
       )
 
       return auth_hmac_buffer
@@ -246,30 +303,29 @@ export class Boho {
           or send AUTH_FAIL when fail.
    */
 
-  // input: unpack object or buffer of auth_hmac
+  /**
+   * 클라이언트의 AUTH_HMAC을 검증합니다.
+   * @param {Buffer|object} data
+   * @returns {boolean}
+   */
   check_auth_hmac(data) {
     let infoPack
     if (data instanceof Uint8Array) {
       infoPack = MBP.unpack(data, Meta.AUTH_HMAC)
       if (!infoPack) {
-        // console.log('auth_hamc unpack fail.')
         return
       }
     } else {
       infoPack = data;
 
     }
-    // console.log('auth_hamc infoObj', infoPack )
 
     this.set_salt12(this.auth_salt12)
 
-    // hmac( key, sec,mil,serverNonce, clientNonce)
     this.generateHMAC(infoPack.nonce)
-    // let hmac8 = this._hmac.subarray(0, 8)
     let hmac32 = this._hmac
 
     if (MBP.equal(infoPack.hmac32, hmac32)) {
-      //Auth success then store client nonce.
       this.remoteNonce = infoPack.nonce
 
       let salt12 = Buffer.concat([
@@ -291,12 +347,12 @@ export class Boho {
     return false
   }
 
-
-
-  // step 5.  cross check
-  // client check server's hmac.  
+  /**
+   * 서버의 AUTH_ACK HMAC을 검증합니다.
+   * @param {Buffer} buffer
+   * @returns {boolean}
+   */
   check_auth_ack_hmac(buffer) {
-    // server response has hmac ( key + clientNonce)
     let auth_ack = MBP.unpack(buffer, Meta.AUTH_ACK)
     if (auth_ack) {
       let salt12 = Buffer.concat([
@@ -306,22 +362,24 @@ export class Boho {
       ])
       this.set_salt12(salt12)
       this.generateHMAC(this.localNonce)
-      // let hmac8 = this._hmac.subarray(0, 8)
       let hmac32 = this._hmac
-      //server side hmac using client nonce.
       if (MBP.equal(hmac32, auth_ack.hmac32)) {
         this.isAuthorized = true
         return true
       }
     }
-    // server hmac error
     return
   }
 
   // C. Secure Communication
 
   // Must AUTH first.
-  encrypt_488(data) {  // payload max about 2^32 bytes.
+  /**
+   * 인증 후 488 암호화 패킷 생성
+   * @param {Buffer} data
+   * @returns {Buffer|undefined}
+   */
+  encrypt_488(data) {
     if (!this.isAuthorized) return
 
     data = MBP.B8(data)
@@ -339,11 +397,14 @@ export class Boho {
       MBP.MB('#hmac8', hmac8),
       MBP.MB('#xdata', encData)
     )
-    // console.log('enc pack result', pack )
     return pack
   }
 
-
+  /**
+   * 인증 후 488 암호화 패킷 복호화
+   * @param {Buffer} data
+   * @returns {Buffer|undefined}
+   */
   decrypt_488(data) {
     data = MBP.B8(data)
 
@@ -366,14 +427,14 @@ export class Boho {
 
       if (MBP.equal(hmac8, pack.hmac8)) return decData
 
-      // console.log('hmac dismatch', decData )
-    } else {
-      // console.log('unpack fail')
     }
   }
 
-
-  // maxium data size is 2**32 -1 bytes.
+  /**
+   * 최대 2^32-1 바이트 데이터 암호화 패킷 생성
+   * @param {Buffer} data
+   * @returns {Buffer}
+   */
   encryptPack(data) {
     data = MBP.B8(data)
 
@@ -393,24 +454,24 @@ export class Boho {
     return pack
   }
 
-
+  /**
+   * 암호화 패킷 복호화
+   * @param {Buffer} data
+   * @returns {Buffer}
+   */
   decryptPack(data) {
 
     if (data[0] !== BohoMsg.ENC_PACK) {
-      // console.log('Boho: Invalid packType')
       return
     }
 
-    // packLength
     let readPackLen = data.readUint32LE(1);
     if (readPackLen != data.byteLength - MetaSize.ENC_PACK) {
-      // console.log('Boho: Invalid LEN data_len: data.byteLen' , readPackLen, data.byteLength)
       return
     }
 
     try {
       let pack = MBP.unpack(data, Meta.ENC_PACK)
-      //  console.log('unpack result', pack )
       if (!pack) return
 
       this.set_salt12(pack.salt12)
@@ -424,14 +485,18 @@ export class Boho {
         pack.data = decData
         return pack
       }
-      // console.log('Invalid HMAC', pack.hmac, hmac8 )
 
     } catch (error) {
-      // console.log('Boho: unpack err', error )
 
     }
   }
 
+  /**
+   * E2E 암호화
+   * @param {Buffer} data
+   * @param {Buffer} key
+   * @returns {Buffer}
+   */
   encrypt_e2e(data, key) {
     let baseKey = Buffer.alloc(32)
     baseKey.set(this._otpSrc44.subarray(0, 32))
@@ -441,6 +506,12 @@ export class Boho {
     return pack;
   }
 
+  /**
+   * E2E 복호화
+   * @param {Buffer} data
+   * @param {Buffer} key
+   * @returns {Buffer}
+   */
   decrypt_e2e(data, key) {
     let baseKey = Buffer.alloc(32)
     baseKey.set(this._otpSrc44.subarray(0, 32))

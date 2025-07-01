@@ -1,6 +1,20 @@
 import MBP from "meta-buffer-pack"
 import { Buffer } from 'buffer/index.js'
 
+/**
+ * Boho 메시지 타입 상수
+ * @typedef {Object} BohoMsg
+ * @property {number} AUTH_REQ
+ * @property {number} AUTH_NONCE
+ * @property {number} AUTH_HMAC
+ * @property {number} AUTH_ACK
+ * @property {number} AUTH_FAIL
+ * @property {number} AUTH_EXT
+ * @property {number} ENC_PACK
+ * @property {number} ENC_E2E
+ * @property {number} ENC_488
+ */
+
 // remocon message pack one byte header. 
 export let BohoMsg = {
   AUTH_REQ : 0xB0,  
@@ -15,6 +29,17 @@ export let BohoMsg = {
 }
 
 for (let c in BohoMsg) { BohoMsg[BohoMsg[c]] = c }
+
+/**
+ * Boho 메시지 메타 정보
+ * @typedef {Object} Meta
+ * @property {any} AUTH_REQ
+ * @property {any} AUTH_NONCE
+ * @property {any} AUTH_HMAC
+ * @property {any} AUTH_ACK
+ * @property {any} ENC_PACK
+ * @property {any} ENC_488
+ */
 
 export const Meta = {
 
@@ -69,6 +94,21 @@ export const Meta = {
     return lastItem[2] + lastItem[3]
   }
 
+  /**
+   * 각 메타의 바이트 크기 정보
+   * @typedef {Object} MetaSize
+   * @property {number} AUTH_REQ
+   * @property {number} AUTH_NONCE
+   * @property {number} AUTH_HMAC
+   * @property {number} AUTH_ACK
+   * @property {number} ENC_PACK
+   * @property {number} ENC_488
+   */
+
+  /**
+   * 각 메타의 바이트 크기 정보
+   * @type {MetaSize}
+   */
   export const MetaSize = {
     AUTH_REQ: getMetaSize( Meta.AUTH_REQ ),
     AUTH_NONCE: getMetaSize( Meta.AUTH_NONCE ),
