@@ -1,3 +1,10 @@
+// Copyright (c) 2024 Taeo Lee (sixgen@gmail.com)
+// MIT License
+//
+// https://github.com/remocons/boho
+//
+//
+//
 import { sha256 } from './sha256-mbp.js'
 import MBP from 'meta-buffer-pack'
 export { MBP }
@@ -7,8 +14,8 @@ import { Buffer } from 'buffer/index.js'
 export { Buffer}
 
 /**
- * 랜덤 바이트 버퍼를 생성합니다.
- * @param {number} size - 생성할 바이트 수
+ * Generates a random byte buffer.
+ * @param {number} size - Number of bytes to generate
  * @returns {Buffer}
  */
 export function RAND(size) {
@@ -16,7 +23,7 @@ export function RAND(size) {
 }
 
 /**
- * Boho 보안 프로토콜 클래스
+ * Boho security protocol class
  */
 export class Boho {
   /**
@@ -37,7 +44,7 @@ export class Boho {
   }
 
   /**
-   * 인증 상태를 초기화합니다.
+   * Initializes authentication state.
    */
   clearAuth(){
     this._id8.fill(0)
@@ -51,7 +58,7 @@ export class Boho {
   }
 
   /**
-   * 입력 데이터를 해시하여 id8에 설정합니다.
+   * Sets id8 by hashing the input data.
    * @param {any} data
    */
   set_hash_id8(data) {
@@ -60,7 +67,7 @@ export class Boho {
   }
 
   /**
-   * id8 값을 설정합니다.
+   * Sets the id8 value.
    * @param {any} data
    */
   set_id8(data) {
@@ -70,7 +77,7 @@ export class Boho {
   }
 
   /**
-   * 키 값을 해시하여 otpSrc44에 설정합니다.
+   * Sets the key value by hashing and storing in otpSrc44.
    * @param {any} data
    */
   set_key(data) {
@@ -79,7 +86,7 @@ export class Boho {
   }
 
   /**
-   * 'id.key' 문자열을 분리하여 id8과 key를 설정합니다.
+   * Splits 'id.key' string and sets id8 and key.
    * @param {string} id_key
    */
   set_id_key(id_key) {
@@ -92,7 +99,7 @@ export class Boho {
   }
 
   /**
-   * 외부에서 id8 값을 복사합니다.
+   * Copies id8 value from external buffer.
    * @param {Buffer} data
    */
   copy_id8(data) {
@@ -100,7 +107,7 @@ export class Boho {
   }
 
   /**
-   * 외부에서 key 값을 복사합니다.
+   * Copies key value from external buffer.
    * @param {Buffer} data
    */
   copy_key(data) {
@@ -108,7 +115,7 @@ export class Boho {
   }
 
   /**
-   * sha256 해시를 n번 반복 적용합니다.
+   * Applies sha256 hash n times.
    * @param {any} srcData
    * @param {number} n
    * @returns {Uint8Array}
@@ -120,7 +127,7 @@ export class Boho {
   }
 
   /**
-   * 랜덤 시계값(salt12)을 otpSrc44에 설정합니다.
+   * Sets random clock value (salt12) in otpSrc44.
    */
   set_clock_rand() {
 
@@ -137,7 +144,7 @@ export class Boho {
   }
 
   /**
-   * 주어진 nonce와 시계값을 otpSrc44에 설정합니다.
+   * Sets otpSrc44 with given nonce and clock value.
    * @param {Buffer} nonce
    */
   set_clock_nonce(nonce) {
@@ -154,7 +161,7 @@ export class Boho {
   }
 
   /**
-   * salt12 값을 otpSrc44에 설정합니다.
+   * Sets salt12 value in otpSrc44.
    * @param {Buffer} salt12
    */
   set_salt12(salt12) {
@@ -162,7 +169,7 @@ export class Boho {
   }
 
   /**
-   * otp 값을 초기화합니다.
+   * Initializes OTP value.
    */
   resetOTP() {
     let otp32 = MBP.B8(sha256.hash(this._otpSrc44))
@@ -170,7 +177,7 @@ export class Boho {
   }
 
   /**
-   * 인덱스에 해당하는 OTP 값을 반환합니다.
+   * Returns OTP value for the given index.
    * @param {number} otpIndex
    * @returns {Uint8Array}
    */
@@ -180,7 +187,7 @@ export class Boho {
   }
 
   /**
-   * HMAC 값을 생성합니다.
+   * Generates HMAC value.
    * @param {Buffer} data
    */
   generateHMAC(data) {
@@ -189,7 +196,7 @@ export class Boho {
   }
 
   /**
-   * 8바이트 HMAC 값을 반환합니다.
+   * Returns 8-byte HMAC value.
    * @param {Buffer} data
    * @returns {Buffer}
    */
@@ -200,7 +207,7 @@ export class Boho {
   }
 
   /**
-   * OTP 기반 XOR 암호화/복호화
+   * OTP-based XOR encryption/decryption
    * @param {Buffer} data
    * @param {number} [otpStartIndex=0]
    * @param {boolean} [shareDataBuffer=false]
@@ -229,7 +236,7 @@ export class Boho {
   // B. AUTH process
 
   /**
-   * AUTH_REQ 메시지 생성
+   * Generates AUTH_REQ message
    * @returns {Buffer}
    */
   auth_req() {
@@ -240,7 +247,7 @@ export class Boho {
   }
 
   /**
-   * AUTH_NONCE 메시지 생성
+   * Generates AUTH_NONCE message
    * @returns {Buffer}
    */
   auth_nonce() {
@@ -262,7 +269,7 @@ export class Boho {
   }
 
   /**
-   * AUTH_HMAC 메시지 생성
+   * Generates AUTH_HMAC message
    * @param {Buffer} buffer
    * @returns {Buffer|boolean}
    */
@@ -304,7 +311,7 @@ export class Boho {
    */
 
   /**
-   * 클라이언트의 AUTH_HMAC을 검증합니다.
+   * Verifies client's AUTH_HMAC.
    * @param {Buffer|object} data
    * @returns {boolean}
    */
@@ -348,7 +355,7 @@ export class Boho {
   }
 
   /**
-   * 서버의 AUTH_ACK HMAC을 검증합니다.
+   * Verifies server's AUTH_ACK HMAC.
    * @param {Buffer} buffer
    * @returns {boolean}
    */
@@ -375,7 +382,7 @@ export class Boho {
 
   // Must AUTH first.
   /**
-   * 인증 후 488 암호화 패킷 생성
+   * Generates encrypted 488 packet after authentication
    * @param {Buffer} data
    * @returns {Buffer|undefined}
    */
@@ -401,7 +408,7 @@ export class Boho {
   }
 
   /**
-   * 인증 후 488 암호화 패킷 복호화
+   * Decrypts 488 packet after authentication
    * @param {Buffer} data
    * @returns {Buffer|undefined}
    */
@@ -431,7 +438,7 @@ export class Boho {
   }
 
   /**
-   * 최대 2^32-1 바이트 데이터 암호화 패킷 생성
+   * Generates encrypted packet for up to 2^32-1 bytes
    * @param {Buffer} data
    * @returns {Buffer}
    */
@@ -455,7 +462,7 @@ export class Boho {
   }
 
   /**
-   * 암호화 패킷 복호화
+   * Decrypts encrypted packet
    * @param {Buffer} data
    * @returns {Buffer}
    */
@@ -492,7 +499,7 @@ export class Boho {
   }
 
   /**
-   * E2E 암호화
+   * End-to-end encryption
    * @param {Buffer} data
    * @param {Buffer} key
    * @returns {Buffer}
@@ -507,7 +514,7 @@ export class Boho {
   }
 
   /**
-   * E2E 복호화
+   * End-to-end decryption
    * @param {Buffer} data
    * @param {Buffer} key
    * @returns {Buffer}

@@ -1,3 +1,10 @@
+// Copyright (c) 2024 Taeo Lee (sixgen@gmail.com)
+// MIT License
+//
+// https://github.com/remocons/boho
+//
+//
+//
 import { Boho, RAND, BohoMsg, Meta, MetaSize, sha256, MBP, Buffer } from './boho.js'
 
 Boho.RAND = RAND;
@@ -9,7 +16,7 @@ Boho.MBP = MBP;
 Boho.Buffer = Buffer;
 
 /**
- * boho 라이브러리의 메인 엔트리포인트
+ * Main entry point of the boho library
  * @module boho
  */
 
@@ -25,7 +32,7 @@ Boho.Buffer = Buffer;
  */
 
 /**
- * boho의 기본 export 객체
+ * Default export object of boho
  * @type {Boho & { RAND: typeof RAND, BohoMsg: typeof BohoMsg, Meta: typeof Meta, MetaSize: typeof MetaSize, sha256: typeof sha256, MBP: typeof MBP, Buffer: typeof Buffer }}
  */
 export default Boho;

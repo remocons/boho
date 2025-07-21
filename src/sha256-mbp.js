@@ -1,3 +1,10 @@
+// Copyright (c) 2024 Taeo Lee (sixgen@gmail.com)
+// MIT License
+//
+// https://github.com/remocons/boho
+//
+//
+//
 import { hash, hmac } from '../lib/fast-sha256.js'
 import MBP from 'meta-buffer-pack'
 

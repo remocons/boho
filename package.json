@@ -1,6 +1,6 @@
 {
   "name": "boho",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Secure Lightweight Encryption & Authentication Library for Node.js, Browsers and Arduino.",
   "type": "module",
   "exports": {
