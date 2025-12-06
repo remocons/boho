@@ -11,7 +11,7 @@ export { MBP }
 import { BohoMsg, Meta, MetaSize } from './constants.js'
 export { BohoMsg, Meta, MetaSize, sha256 }
 import { Buffer } from 'buffer/index.js'
-export { Buffer}
+export { Buffer }
 
 /**
  * Generates a random byte buffer.
@@ -40,13 +40,13 @@ export class Boho {
     this.localNonce = Buffer.alloc(4)
     this.remoteNonce = Buffer.alloc(4)
     this.isAuthorized = false
-
+    this.counter = 0;
   }
 
   /**
    * Initializes authentication state.
    */
-  clearAuth(){
+  clearAuth() {
     this._id8.fill(0)
     this._otpSrc44.fill(0)
     this._otp36.fill(0)
@@ -55,6 +55,7 @@ export class Boho {
     this.localNonce.fill(0)
     this.remoteNonce.fill(0)
     this.isAuthorized = false
+    this.counter = 0;
   }
 
   /**
@@ -91,7 +92,7 @@ export class Boho {
    */
   set_id_key(id_key) {
     let delimiterPosition = id_key.indexOf('.')
-    if( delimiterPosition == -1 ) return
+    if (delimiterPosition == -1) return
     let id = id_key.substring(0, delimiterPosition)
     let key = id_key.substring(delimiterPosition + 1)
     this.set_id8(id)
@@ -126,20 +127,20 @@ export class Boho {
     return hashSum
   }
 
+
   /**
    * Sets random clock value (salt12) in otpSrc44.
    */
   set_clock_rand() {
-
-    let milTime = Date.now()
-    let secTime = parseInt(milTime / 1000)
-    milTime = milTime % 0xffffffff
+    const now = Date.now()
+    const secTime = parseInt(now / 1000)
+    const milTime = now % 1000
     const salt12 = Buffer.concat([
-     MBP.NB('32L', secTime),
-     MBP.NB('32L', milTime),
-      RAND(4)
+      MBP.NB('32L', secTime),
+      MBP.NB('16L', milTime),
+      MBP.NB('16L', ++this.counter),
+      RAND(4) // JS: use crypto.getRandomValues(),  Arduino: use micros()
     ])
-
     salt12.copy(this._otpSrc44, 32)
   }
 
@@ -148,15 +149,15 @@ export class Boho {
    * @param {Buffer} nonce
    */
   set_clock_nonce(nonce) {
-    let milTime = Date.now()
-    let secTime = parseInt(milTime / 1000)
-    milTime = milTime % 0xffffffff
+    const now = Date.now()
+    const secTime = parseInt(now / 1000)
+    const milTime = now % 1000
     const salt12 = Buffer.concat([
-     MBP.NB('32L', secTime),
-     MBP.NB('32L', milTime),
+      MBP.NB('32L', secTime),
+      MBP.NB('16L', milTime),
+      MBP.NB('16L', ++this.counter),
       nonce
     ])
-
     salt12.copy(this._otpSrc44, 32)
   }
 
@@ -164,7 +165,11 @@ export class Boho {
    * Sets salt12 value in otpSrc44.
    * @param {Buffer} salt12
    */
-  set_salt12(salt12) {
+  set_salt12(salt12 , caller) {
+    // console.log('boho.set_salt12', salt12  , caller )
+    if( salt12.byteLength != 12){
+      throw TypeError('set_salt12: Invalid salt12 byteLength.')
+    } 
     salt12.copy(this._otpSrc44, 32)
   }
 
@@ -236,64 +241,57 @@ export class Boho {
   // B. AUTH process
 
   /**
-   * Generates AUTH_REQ message
+   * Generates server time and nonce signal
    * @returns {Buffer}
    */
-  auth_req() {
-    return MBP.pack(
-      MBP.MB('#type', '8', BohoMsg.AUTH_REQ),
-      MBP.MB('#reserved', '8', 0)
-    )
-  }
+  server_time_nonce() {
+    const now = Date.now()
+    const unixTime = Math.floor(now / 1000)
+    const milliseconds = now % 1000;
 
-  /**
-   * Generates AUTH_NONCE message
-   * @returns {Buffer}
-   */
-  auth_nonce() {
-    let now = Date.now()
-    let unixTime = Math.floor(now / 1000)
-    let milTime = now % 1000
     this.localNonce = RAND(4)
+    //keep 
     this.auth_salt12 = Buffer.concat([
-     MBP.NB('32L', unixTime),
-     MBP.NB('32L', milTime),
+      MBP.NB('32L', unixTime),
+      MBP.NB('16L', milliseconds),
+      RAND(2),  // used for client's counter IV.
       this.localNonce
     ])
 
     let infoPack = Buffer.concat([
-     MBP.NB('8', BohoMsg.AUTH_NONCE),
+      MBP.NB('8', BohoMsg.SERVER_TIME_NONCE),
       this.auth_salt12
     ])
     return infoPack
   }
 
   /**
-   * Generates AUTH_HMAC message
-   * @param {Buffer} buffer
+   * Generates AUTH_REQ message
+   * @param {Buffer} buffer server's time nonce
    * @returns {Buffer|boolean}
    */
-  auth_hmac(buffer) {
-    let auth_nonce = MBP.unpack(buffer, Meta.AUTH_NONCE)
-    if (auth_nonce) {
+  auth_req(buffer) {
+    let server_time_nonce = MBP.unpack(buffer, Meta.SERVER_TIME_NONCE)
+    if (server_time_nonce) {
       let salt12 = Buffer.concat([
-       MBP.NB('32L', auth_nonce.unixTime),
-       MBP.NB('32L', auth_nonce.milTime),
-        auth_nonce.nonce
+        MBP.NB('32L', server_time_nonce.unixTime),
+        MBP.NB('16L', server_time_nonce.milTime),
+        MBP.NB('16L', server_time_nonce.counter),
+        server_time_nonce.nonce
       ])
 
-      this.set_salt12(salt12)
+      this.set_salt12(salt12, 'auth_req')
 
       this.localNonce = RAND(4)
       this.generateHMAC(this.localNonce)
 
-      this.remoteNonce = auth_nonce.nonce
+      this.remoteNonce = server_time_nonce.nonce
 
       let auth_hmac_buffer = MBP.pack(
-       MBP.MB('#header', '8', BohoMsg.AUTH_HMAC),
-       MBP.MB('#id8', this._id8),
-       MBP.MB('#nonce', this.localNonce),
-       MBP.MB('#hmac32', this._hmac ),
+        MBP.MB('#header', '8', BohoMsg.AUTH_REQ),
+        MBP.MB('#id8', this._id8),
+        MBP.MB('#nonce', this.localNonce),
+        MBP.MB('#hmac32', this._hmac),
       )
 
       return auth_hmac_buffer
@@ -303,31 +301,26 @@ export class Boho {
 
   /*  
       step 4.  for server
-  
-      step 4-1. check client's auth_hmac
-      step 4-2. reply result
-          send AUTH_ACK  with another HMAC for client.
-          or send AUTH_FAIL when fail.
    */
 
   /**
-   * Verifies client's AUTH_HMAC.
+   * Verify client's AUTH_REQ.
    * @param {Buffer|object} data
    * @returns {boolean}
    */
-  check_auth_hmac(data) {
+  verify_auth_req(data) {
+
     let infoPack
     if (data instanceof Uint8Array) {
-      infoPack = MBP.unpack(data, Meta.AUTH_HMAC)
+      infoPack = MBP.unpack(data, Meta.AUTH_REQ)
       if (!infoPack) {
         return
       }
     } else {
       infoPack = data;
-
     }
 
-    this.set_salt12(this.auth_salt12)
+    this.set_salt12(this.auth_salt12, 'verify_auth_req 1/2')
 
     this.generateHMAC(infoPack.nonce)
     let hmac32 = this._hmac
@@ -340,37 +333,38 @@ export class Boho {
         this.remoteNonce,
         this.localNonce
       ])
-      this.set_salt12(salt12)
+
+      this.set_salt12(salt12, 'verify_auth_req 2/2')
       this.generateHMAC(infoPack.nonce)
       let replyHMAC = this._hmac
 
-      let auth_ack = MBP.rawPack( 
-       MBP.MB('header', '8', BohoMsg.AUTH_ACK),
-       MBP.MB('hmac32', replyHMAC)
+      let auth_res = MBP.rawPack(
+        MBP.MB('header', '8', BohoMsg.AUTH_RES),
+        MBP.MB('hmac32', replyHMAC)
       )
       this.isAuthorized = true
-      return auth_ack
+      return auth_res
     }
     return false
   }
 
   /**
-   * Verifies server's AUTH_ACK HMAC.
+   * Verifies server's AUTH_RES HMAC.
    * @param {Buffer} buffer
    * @returns {boolean}
    */
-  check_auth_ack_hmac(buffer) {
-    let auth_ack = MBP.unpack(buffer, Meta.AUTH_ACK)
-    if (auth_ack) {
+  verify_auth_res(buffer) {
+    let auth_res = MBP.unpack(buffer, Meta.AUTH_RES)
+    if (auth_res) {
       let salt12 = Buffer.concat([
         this.remoteNonce,
         this.localNonce,
         this.remoteNonce,
       ])
-      this.set_salt12(salt12)
+      this.set_salt12(salt12, 'verify_auth_res')
       this.generateHMAC(this.localNonce)
       let hmac32 = this._hmac
-      if (MBP.equal(hmac32, auth_ack.hmac32)) {
+      if (MBP.equal(hmac32, auth_res.hmac32)) {
         this.isAuthorized = true
         return true
       }
@@ -424,7 +418,7 @@ export class Boho {
         this.localNonce
       ])
 
-      this.set_salt12(salt12)
+      this.set_salt12(salt12 , 'decrypt_488')
       this.resetOTP()
 
       let xdata = pack.$OTHERS.subarray(0, pack.len)
@@ -481,7 +475,7 @@ export class Boho {
       let pack = MBP.unpack(data, Meta.ENC_PACK)
       if (!pack) return
 
-      this.set_salt12(pack.salt12)
+      this.set_salt12(pack.salt12, 'decryptPack')
       this.resetOTP()
 
       let xdata = pack.$OTHERS

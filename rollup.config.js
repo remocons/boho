@@ -25,23 +25,6 @@ export default [
       commonjs()
       , terser()
     ]
-  },
-  {
-    input: './src/index.js',
-    output: [
-      {
-        file: './dist/boho.cjs',
-        format: 'cjs',
-        exports: 'default'
-      }
-    ],
-    plugins: [
-      resolve({
-        preferBuiltins: true
-      }),
-      commonjs()
-      , terser()
-    ]
   }
 
 ]
