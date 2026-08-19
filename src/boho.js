@@ -135,10 +135,11 @@ export class Boho {
     const now = Date.now()
     const secTime = parseInt(now / 1000)
     const milTime = now % 1000
+    if (++this.counter > 65535) this.counter = 0;
     const salt12 = Buffer.concat([
       MBP.NB('32L', secTime),
       MBP.NB('16L', milTime),
-      MBP.NB('16L', ++this.counter),
+      MBP.NB('16L', this.counter),
       RAND(4) // JS: use crypto.getRandomValues(),  Arduino: use micros()
     ])
     salt12.copy(this._otpSrc44, 32)
@@ -152,10 +153,11 @@ export class Boho {
     const now = Date.now()
     const secTime = parseInt(now / 1000)
     const milTime = now % 1000
+    if (++this.counter > 65535) this.counter = 0;
     const salt12 = Buffer.concat([
       MBP.NB('32L', secTime),
       MBP.NB('16L', milTime),
-      MBP.NB('16L', ++this.counter),
+      MBP.NB('16L', this.counter),
       nonce
     ])
     salt12.copy(this._otpSrc44, 32)
