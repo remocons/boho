@@ -3,3 +3,6 @@ node_modules/
 .vscode/
 *.sh
 .DS_Store
+/private/
+/docs/internal/
+/docs/INTEGRATION_REVIEW.md

@@ -2,3 +2,4 @@ docs/
 *.tgz
 .vscode/
 *.sh
+/private/

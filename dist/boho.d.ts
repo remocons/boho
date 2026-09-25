@@ -5,13 +5,15 @@
 import { Buffer } from 'buffer';
 import MBP from 'meta-buffer-pack';
 
-export function RAND(size: number): Buffer;
+declare function RAND(size: number): Buffer;
 
 // Interfaces based on src/constants.js and usage in boho.js
 export interface BohoMsgType {
   SERVER_TIME_NONCE: number;
   AUTH_REQ: number;
   AUTH_RES: number;
+  AUTH_FAIL: number;
+  ENC_E2E: number;
   ENC_PACK: number;
   ENC_488: number;
   [key: string]: number | string;
@@ -26,7 +28,11 @@ export interface MetaType {
 }
 
 export interface MetaSizeType {
+  SERVER_TIME_NONCE: number;
+  AUTH_REQ: number;
+  AUTH_RES: number;
   ENC_PACK: number;
+  ENC_488: number;
 }
 
 export interface Sha256 {
@@ -36,7 +42,14 @@ export interface Sha256 {
   hmac(key: any, data: any): Uint8Array;
 }
 
-export class Boho {
+declare class Boho {
+  static RAND: typeof RAND;
+  static BohoMsg: BohoMsgType;
+  static Meta: MetaType;
+  static MetaSize: MetaSizeType;
+  static sha256: Sha256;
+  static MBP: typeof MBP;
+  static Buffer: typeof Buffer;
   protected _id8: Buffer;
   protected _otpSrc44: Buffer;
   protected _otp36: Buffer;
@@ -89,7 +102,7 @@ export class Boho {
    * Copies key value from external buffer.
    * @param data
    */
-  copy_key(data: Buffer): void;
+  copy_key(data: Uint8Array): void;
 
   /**
    * Applies sha256 hash n times.
@@ -128,13 +141,13 @@ export class Boho {
   getIndexOTP(otpIndex: number): Uint8Array;
 
   /**
-   * Generates HMAC value.
+   * Generates the legacy SHA-256 prefix tag, not standard HMAC.
    * @param data
    */
   generateHMAC(data: Buffer): void;
 
   /**
-   * Returns 8-byte HMAC value.
+   * Returns the 8-byte legacy tag, not standard HMAC.
    * @param data
    */
   getHMAC8(data: Buffer): Buffer;
@@ -158,20 +171,20 @@ export class Boho {
    * Generates AUTH_REQ message
    * @param buffer server's time nonce
    */
-  auth_req(buffer: Buffer): Buffer | boolean;
+  auth_req(buffer: Uint8Array): Buffer | false;
 
   /**
    * Verify client's AUTH_REQ.
    * @param data
    * @returns auth_res packet or false
    */
-  verify_auth_req(data: Buffer | object): Buffer | false;
+  verify_auth_req(data: Uint8Array | object): Buffer | false;
 
   /**
    * Verifies server's AUTH_RES HMAC.
    * @param buffer
    */
-  verify_auth_res(buffer: Buffer): boolean | undefined;
+  verify_auth_res(buffer: Uint8Array): boolean | undefined;
 
   // C. Secure Communication
 
@@ -179,45 +192,41 @@ export class Boho {
    * Generates encrypted 488 packet after authentication
    * @param data
    */
-  encrypt_488(data: Buffer): Buffer | undefined;
+  encrypt_488(data: string | Uint8Array): Buffer | undefined;
 
   /**
    * Decrypts 488 packet after authentication
    * @param data
    */
-  decrypt_488(data: Buffer): Buffer | undefined;
+  decrypt_488(data: Uint8Array): Buffer | undefined;
 
   /**
    * Generates encrypted packet for up to 2^32-1 bytes
    * @param data
    */
-  encryptPack(data: Buffer): Buffer;
+  encryptPack(data: string | Uint8Array): Buffer;
 
   /**
    * Decrypts encrypted packet
    * @param data
    * @returns The decrypted data buffer inside a pack object, or undefined.
    */
-  decryptPack(data: Buffer): { data: Buffer, [key: string]: any } | undefined;
+  decryptPack(data: Uint8Array): { data: Buffer, [key: string]: any } | undefined;
 
   /**
    * End-to-end encryption
    * @param data
    * @param key
    */
-  encrypt_e2e(data: Buffer, key: any): Buffer;
+  encrypt_e2e(data: string | Uint8Array, key: any): Buffer;
 
   /**
    * End-to-end decryption
    * @param data
    * @param key
    */
-  decrypt_e2e(data: Buffer, key: any): { data: Buffer, [key: string]: any } | undefined;
+  decrypt_e2e(data: Uint8Array, key: any): { data: Buffer, [key: string]: any } | undefined;
 }
 
-export const BohoMsg: BohoMsgType;
-export const Meta: MetaType;
-export const MetaSize: MetaSizeType;
-export const sha256: Sha256;
-
-export { MBP, Buffer };
+export type { Boho, Buffer };
+export default Boho;

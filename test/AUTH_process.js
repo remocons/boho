@@ -33,12 +33,12 @@ describe('AUTH process ESM', function () {
   s.set_key(key) // if correct.
   const auth_res_buffer = s.verify_auth_req(unpack)
 
-  const auth_res_buffer_with_incorrect_hmac = Boho.Buffer.alloc(9)
-  const isCorrectSeverHMAC = c.verify_auth_res(auth_res_buffer)
+  const auth_res_buffer_with_incorrect_hmac = Boho.Buffer.alloc(MetaSize.AUTH_RES)
 
   auth_res_buffer.copy(auth_res_buffer_with_incorrect_hmac)
   auth_res_buffer_with_incorrect_hmac[2] ^= 0x55 // change hmac
   const wrongSeverHMACResult = c.verify_auth_res(auth_res_buffer_with_incorrect_hmac)
+  const isCorrectSeverHMAC = c.verify_auth_res(auth_res_buffer)
 
 
   describe('1. server send SERVER_TIME_NONCE', function () {
@@ -47,7 +47,7 @@ describe('AUTH process ESM', function () {
     })
 
     it('should pack[0] is header type ', function () {
-      assert.ok(auth_nonce_buffer[0], BohoMsg.SERVER_TIME_NONCE)
+      assert.equal(auth_nonce_buffer[0], BohoMsg.SERVER_TIME_NONCE)
     })
   })
 
@@ -57,7 +57,7 @@ describe('AUTH process ESM', function () {
     })
 
     it('should pack[0] is header type ', function () {
-      assert.ok(auth_req_buffer[0], BohoMsg.AUTH_REQ)
+      assert.equal(auth_req_buffer[0], BohoMsg.AUTH_REQ)
     })
   })
 

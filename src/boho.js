@@ -13,6 +13,28 @@ export { BohoMsg, Meta, MetaSize, sha256 }
 import { Buffer } from 'buffer/index.js'
 export { Buffer }
 
+// Avoid data-dependent early exits when comparing fixed-length tags.
+// JavaScript engines do not guarantee constant-time execution.
+function equalTag(a, b) {
+  if (!(a instanceof Uint8Array) || !(b instanceof Uint8Array) || a.length !== b.length) return false
+  let difference = 0
+  for (let i = 0; i < a.length; i++) difference |= a[i] ^ b[i]
+  return difference === 0
+}
+
+function readPacket(data, type, size, meta, variable = false) {
+  if (!(data instanceof Uint8Array)) return
+  const buffer = Buffer.from(data)
+  if (buffer.length < size || buffer[0] !== type) return
+  if (variable ? buffer.readUInt32LE(1) !== buffer.length - size : buffer.length !== size) return
+  return MBP.unpack(buffer, meta)
+}
+
+function validClock(clock) {
+  return clock.readUInt16LE(4) < 1000
+}
+
+
 /**
  * Generates a random byte buffer.
  * @param {number} size - Number of bytes to generate
@@ -40,7 +62,9 @@ export class Boho {
     this.localNonce = Buffer.alloc(4)
     this.remoteNonce = Buffer.alloc(4)
     this.isAuthorized = false
-    this.counter = 0;
+    this.counter = 0
+    this._hasKey = false
+    this._lastSendTime = 0
   }
 
   /**
@@ -55,7 +79,9 @@ export class Boho {
     this.localNonce.fill(0)
     this.remoteNonce.fill(0)
     this.isAuthorized = false
-    this.counter = 0;
+    this.counter = 0
+    this._hasKey = false
+    this._lastSendTime = 0
   }
 
   /**
@@ -82,8 +108,9 @@ export class Boho {
    * @param {any} data
    */
   set_key(data) {
-    let keySum = MBP.B8(sha256.hash(data))
-    keySum.copy(this._otpSrc44, 0, 0, 32)
+    const bytes = MBP.B8(data)
+    if (!bytes || bytes.length === 0) throw new TypeError('Key must not be empty')
+    this.copy_key(MBP.B8(sha256.hash(bytes)))
   }
 
   /**
@@ -112,7 +139,12 @@ export class Boho {
    * @param {Buffer} data
    */
   copy_key(data) {
-    data.copy(this._otpSrc44, 0, 0, 32)
+    if (!(data instanceof Uint8Array) || data.length !== 32) {
+      throw new TypeError('copy_key requires exactly 32 bytes')
+    }
+    this._otpSrc44.set(data, 0)
+    this._hasKey = true
+
   }
 
   /**
@@ -132,35 +164,32 @@ export class Boho {
    * Sets random clock value (salt12) in otpSrc44.
    */
   set_clock_rand() {
-    const now = Date.now()
-    const secTime = parseInt(now / 1000)
-    const milTime = now % 1000
-    if (++this.counter > 65535) this.counter = 0;
+    this.set_clock_nonce(RAND(4))
+  }
+
+  /** Sets a monotonic clock/counter and a 4-byte nonce. */
+  set_clock_nonce(nonce) {
+    if (!(nonce instanceof Uint8Array) || nonce.length !== 4) {
+      throw new TypeError('Nonce must be 4 bytes')
+    }
+    let now = Math.max(Date.now(), this._lastSendTime)
+    this.counter = (this.counter + 1) & 0xffff
+    if (this.counter === 0 && now === this._lastSendTime) now++
+    if (!Number.isSafeInteger(now) || now < 0 || Math.floor(now / 1000) > 0xffffffff) {
+      throw new RangeError('Clock is outside the protocol range')
+    }
+    this._lastSendTime = now
     const salt12 = Buffer.concat([
-      MBP.NB('32L', secTime),
-      MBP.NB('16L', milTime),
+      MBP.NB('32L', Math.floor(now / 1000)),
+      MBP.NB('16L', now % 1000),
       MBP.NB('16L', this.counter),
-      RAND(4) // JS: use crypto.getRandomValues(),  Arduino: use micros()
+      Buffer.from(nonce)
     ])
     salt12.copy(this._otpSrc44, 32)
   }
 
-  /**
-   * Sets otpSrc44 with given nonce and clock value.
-   * @param {Buffer} nonce
-   */
-  set_clock_nonce(nonce) {
-    const now = Date.now()
-    const secTime = parseInt(now / 1000)
-    const milTime = now % 1000
-    if (++this.counter > 65535) this.counter = 0;
-    const salt12 = Buffer.concat([
-      MBP.NB('32L', secTime),
-      MBP.NB('16L', milTime),
-      MBP.NB('16L', this.counter),
-      nonce
-    ])
-    salt12.copy(this._otpSrc44, 32)
+  _requireKey() {
+    if (!this._hasKey) throw new Error('Set a key before encryption or authentication')
   }
 
   /**
@@ -179,6 +208,7 @@ export class Boho {
    * Initializes OTP value.
    */
   resetOTP() {
+    this._requireKey()
     let otp32 = MBP.B8(sha256.hash(this._otpSrc44))
     otp32.copy(this._otp36, 0, 0, 32)
   }
@@ -194,20 +224,22 @@ export class Boho {
   }
 
   /**
-   * Generates HMAC value.
+   * Generates the legacy SHA-256 prefix tag (not standard HMAC).
    * @param {Buffer} data
    */
   generateHMAC(data) {
+    this._requireKey()
     let hmacSrc = Buffer.concat([this._otpSrc44, data])
     this._hmac = MBP.B8(sha256.hash(hmacSrc))
   }
 
   /**
-   * Returns 8-byte HMAC value.
+   * Returns the truncated 8-byte legacy tag (not standard HMAC).
    * @param {Buffer} data
    * @returns {Buffer}
    */
   getHMAC8(data) {
+    this._requireKey()
     let hmacSrc = Buffer.concat([this._otpSrc44, data])
     this._hmac = MBP.B8(sha256.hash(hmacSrc))
     return this._hmac.subarray(0, 8)
@@ -273,7 +305,9 @@ export class Boho {
    * @returns {Buffer|boolean}
    */
   auth_req(buffer) {
-    let server_time_nonce = MBP.unpack(buffer, Meta.SERVER_TIME_NONCE)
+    if (!this._hasKey) return false
+    let server_time_nonce = readPacket(buffer, BohoMsg.SERVER_TIME_NONCE, MetaSize.SERVER_TIME_NONCE, Meta.SERVER_TIME_NONCE)
+    if (server_time_nonce && server_time_nonce.milTime >= 1000) return false
     if (server_time_nonce) {
       let salt12 = Buffer.concat([
         MBP.NB('32L', server_time_nonce.unixTime),
@@ -312,23 +346,26 @@ export class Boho {
    */
   verify_auth_req(data) {
 
+    if (!this._hasKey) return false
     let infoPack
     if (data instanceof Uint8Array) {
-      infoPack = MBP.unpack(data, Meta.AUTH_REQ)
-      if (!infoPack) {
-        return
-      }
-    } else {
-      infoPack = data;
+      infoPack = readPacket(data, BohoMsg.AUTH_REQ, MetaSize.AUTH_REQ, Meta.AUTH_REQ)
+    } else if (data && typeof data === 'object') {
+      infoPack = data
     }
+    if (!infoPack || infoPack.header !== BohoMsg.AUTH_REQ ||
+        !(infoPack.id8 instanceof Uint8Array) || infoPack.id8.length !== 8 ||
+        !(infoPack.nonce instanceof Uint8Array) || infoPack.nonce.length !== 4 ||
+        !(infoPack.hmac32 instanceof Uint8Array) || infoPack.hmac32.length !== 32 ||
+        (infoPack.$OTHERS && infoPack.$OTHERS.length !== 0)) return false
 
     this.set_salt12(this.auth_salt12, 'verify_auth_req 1/2')
 
     this.generateHMAC(infoPack.nonce)
     let hmac32 = this._hmac
 
-    if (MBP.equal(infoPack.hmac32, hmac32)) {
-      this.remoteNonce = infoPack.nonce
+    if (equalTag(infoPack.hmac32, hmac32)) {
+      this.remoteNonce = Buffer.from(infoPack.nonce)
 
       let salt12 = Buffer.concat([
         this.localNonce,
@@ -356,7 +393,8 @@ export class Boho {
    * @returns {boolean}
    */
   verify_auth_res(buffer) {
-    let auth_res = MBP.unpack(buffer, Meta.AUTH_RES)
+    if (!this._hasKey) return false
+    let auth_res = readPacket(buffer, BohoMsg.AUTH_RES, MetaSize.AUTH_RES, Meta.AUTH_RES)
     if (auth_res) {
       let salt12 = Buffer.concat([
         this.remoteNonce,
@@ -366,7 +404,7 @@ export class Boho {
       this.set_salt12(salt12, 'verify_auth_res')
       this.generateHMAC(this.localNonce)
       let hmac32 = this._hmac
-      if (MBP.equal(hmac32, auth_res.hmac32)) {
+      if (equalTag(hmac32, auth_res.hmac32)) {
         this.isAuthorized = true
         return true
       }
@@ -383,7 +421,7 @@ export class Boho {
    * @returns {Buffer|undefined}
    */
   encrypt_488(data) {
-    if (!this.isAuthorized) return
+    if (!this.isAuthorized || !this._hasKey) return
 
     data = MBP.B8(data)
 
@@ -409,28 +447,26 @@ export class Boho {
    * @returns {Buffer|undefined}
    */
   decrypt_488(data) {
-    data = MBP.B8(data)
-
-    let pack = MBP.unpack(data, Meta.ENC_488)
-
-    if (pack) {
-
-      let salt12 = Buffer.concat([
-        pack.otpSrc8,
-        this.localNonce
-      ])
-
-      this.set_salt12(salt12 , 'decrypt_488')
-      this.resetOTP()
-
-      let xdata = pack.$OTHERS.subarray(0, pack.len)
-      let decData = this.xotp(xdata)
-
-      let hmac8 = this.getHMAC8(decData)
-
-      if (MBP.equal(hmac8, pack.hmac8)) return decData
-
+    if (!this.isAuthorized || !this._hasKey) return
+    // iosignal ENC_E2E wraps only an encrypted routing header. The remaining
+    // bytes are an opaque end-to-end packet and must not enter this decryptor.
+    let header = data
+    if (data instanceof Uint8Array && data[0] === BohoMsg.ENC_E2E) {
+      if (data.length < MetaSize.ENC_488) return
+      const packet = Buffer.from(data)
+      const headerLength = packet.readUInt32LE(1)
+      if (headerLength > packet.length - MetaSize.ENC_488) return
+      header = Buffer.from(packet.subarray(0, MetaSize.ENC_488 + headerLength))
+      header[0] = BohoMsg.ENC_488
     }
+    const pack = readPacket(header, BohoMsg.ENC_488, MetaSize.ENC_488, Meta.ENC_488, true)
+    if (!pack || !validClock(pack.otpSrc8)) return
+    this.set_salt12(Buffer.concat([pack.otpSrc8, this.localNonce]), 'decrypt_488')
+    this.resetOTP()
+    const decData = this.xotp(pack.$OTHERS ?? Buffer.alloc(0))
+    if (!equalTag(this.getHMAC8(decData), pack.hmac8)) return
+    // Session freshness/replay policy belongs to the caller (iosignal).
+    return decData
   }
 
   /**
@@ -439,6 +475,7 @@ export class Boho {
    * @returns {Buffer}
    */
   encryptPack(data) {
+    this._requireKey()
     data = MBP.B8(data)
 
     this.set_clock_rand()
@@ -463,35 +500,15 @@ export class Boho {
    * @returns {Buffer}
    */
   decryptPack(data) {
-
-    if (data[0] !== BohoMsg.ENC_PACK) {
-      return
-    }
-
-    let readPackLen = data.readUint32LE(1);
-    if (readPackLen != data.byteLength - MetaSize.ENC_PACK) {
-      return
-    }
-
-    try {
-      let pack = MBP.unpack(data, Meta.ENC_PACK)
-      if (!pack) return
-
-      this.set_salt12(pack.salt12, 'decryptPack')
-      this.resetOTP()
-
-      let xdata = pack.$OTHERS
-      let decData = this.xotp(xdata)
-      let hmac8 = this.getHMAC8(decData)
-
-      if (MBP.equal(pack.hmac, hmac8)) {
-        pack.data = decData
-        return pack
-      }
-
-    } catch (error) {
-
-    }
+    if (!this._hasKey) return
+    const pack = readPacket(data, BohoMsg.ENC_PACK, MetaSize.ENC_PACK, Meta.ENC_PACK, true)
+    if (!pack) return
+    this.set_salt12(pack.salt12, 'decryptPack')
+    this.resetOTP()
+    const decData = this.xotp(pack.$OTHERS ?? Buffer.alloc(0))
+    if (!equalTag(pack.hmac, this.getHMAC8(decData))) return
+    pack.data = decData
+    return pack
   }
 
   /**
@@ -501,12 +518,7 @@ export class Boho {
    * @returns {Buffer}
    */
   encrypt_e2e(data, key) {
-    let baseKey = Buffer.alloc(32)
-    baseKey.set(this._otpSrc44.subarray(0, 32))
-    this.set_key(key)
-    let pack = this.encryptPack(data)
-    this._otpSrc44.set(baseKey)
-    return pack;
+    return this._withKey(key, () => this.encryptPack(data))
   }
 
   /**
@@ -516,12 +528,25 @@ export class Boho {
    * @returns {Buffer}
    */
   decrypt_e2e(data, key) {
-    let baseKey = Buffer.alloc(32)
-    baseKey.set(this._otpSrc44.subarray(0, 32))
-    this.set_key(key)
-    let decPack = this.decryptPack(data)
-    this._otpSrc44.set(baseKey)
-    return decPack
+    return this._withKey(key, () => this.decryptPack(data))
+  }
+
+  _withKey(key, operation) {
+    const bytes = MBP.B8(key)
+    if (!bytes || bytes.length === 0) throw new TypeError('Key must not be empty')
+    const state = [Buffer.from(this._otpSrc44), Buffer.from(this._otp36), Buffer.from(this._hmac)]
+    const hadKey = this._hasKey
+    try {
+      this._otpSrc44.set(sha256.hash(bytes), 0)
+      this._hasKey = true
+      return operation()
+    } finally {
+      this._otpSrc44.set(state[0])
+      this._otp36.set(state[1])
+      this._hmac.set(state[2])
+      this._hasKey = hadKey
+      for (const buffer of state) buffer.fill(0)
+    }
   }
 
 }
