@@ -327,6 +327,8 @@ Named value exports such as `import { Boho, RAND } from 'boho'` are not provided
 
 ## Development checks
 
+Open the [browser test page on GitHub Pages](https://remocons.github.io/boho/test-browser/) to run the random generation, encryption/decryption and authentication tests in your browser. Tests run automatically when the page loads.
+
 `npm test` first rebuilds distribution files, then runs regression tests for the
 source, ESM and browser UMD (in a Node VM), plus TypeScript checks. Actual browser
 and physical Arduino tests are separate.

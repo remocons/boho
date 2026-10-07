@@ -305,6 +305,8 @@ import Boho from 'boho'
 
 ## 개발 검증
 
+[GitHub Pages 브라우저 테스트 페이지](https://remocons.github.io/boho/test-browser/)에서 난수 생성, 암호화·복호화 및 인증 테스트를 직접 실행할 수 있습니다. 페이지를 열면 테스트가 자동으로 실행됩니다.
+
 `npm test`는 배포 파일을 먼저 재빌드하고, 소스·ESM·브라우저 UMD(Node VM)의 회귀 테스트와 TypeScript 검사를 수행합니다. 실제 브라우저 및 물리 Arduino 장치 검사는 별도입니다.
 
 `npm run test:arduino`는 인접한 `../boho-arduino/src/Boho.cpp`를 수정 없이 호스트 C++ 컴파일러로 빌드해 JS와 양방향 통신을 검증합니다. 다른 위치는 `BOHO_ARDUINO_PATH` 환경 변수로 지정하세요. macOS는 CommonCrypto, 다른 호스트는 OpenSSL 개발 라이브러리가 필요합니다. 테스트용 시계·Serial·SHA-256 어댑터를 사용하므로 물리 장치 테스트를 대체하지 않습니다.
