@@ -12,8 +12,10 @@ import PatchedBoho from '../../dist/boho.js'
 const dir = fileURLToPath(new URL('.', import.meta.url))
 const iosignal = process.env.IOSIGNAL_PATH || resolve(dir, '../../../iosignal')
 const arduino = process.env.IOSIGNAL_ARDUINO_PATH || resolve(dir, '../../../iosignal-arduino')
+const bohoArduino = process.env.BOHO_ARDUINO_PATH || resolve(dir, '../../../boho-arduino')
 const load = path => import(pathToFileURL(join(iosignal, path)))
 const {Manager} = await load('src/server/Manager.js')
+const {serverOption} = await load('src/server/serverOption.js')
 const {BohoAuth} = await load('src/auth/BohoAuth.js')
 const {IOCongSocket} = await load('src/client/IOCongSocket.js')
 const {CongRx} = await load('src/client/CongPacket.js')
@@ -25,8 +27,8 @@ it('Arduino IOSignal (80-byte RX) ↔ real iosignal server ↔ JS client: auth, 
   let child, lines, io, manager
   try {
     const args=['-std=c++11','-ffunction-sections','-fdata-sections','-Wno-deprecated-declarations',
-      '-I',join(dir,'shims'),'-I',join(dir,'../arduino/shims'),'-I',join(arduino,'src'),
-      join(dir,'host.cpp'),...['Boho.cpp','CongPacket.cpp','IOSignal.cpp'].map(f=>join(arduino,'src',f)),
+      '-I',join(dir,'shims'),'-I',join(dir,'../arduino/shims'),'-I',join(arduino,'src'),'-I',join(bohoArduino,'src'),
+      join(dir,'host.cpp'),join(bohoArduino,'src/Boho.cpp'),...['CongPacket.cpp','IOSignal.cpp'].map(f=>join(arduino,'src',f)),
       '-o',executable]
     args.push(process.platform==='darwin'?'-Wl,-dead_strip':'-Wl,--gc-sections')
     if(process.platform!=='darwin')args.push('-lcrypto')
@@ -43,7 +45,7 @@ it('Arduino IOSignal (80-byte RX) ↔ real iosignal server ↔ JS client: auth, 
       write(data){this.pending.push(Buffer.from(data))}
       end(){this.readyState='closed'} destroy(){this.end()}
     }
-    const server=new EventEmitter();server.serviceNames=new Set()
+    const server=new EventEmitter();server.serviceNames=new Set();server.security=Object.freeze({...serverOption.security})
     const auth=new BohoAuth({getAuth:async id=>id==='arduino'?{key:'arduino-key',cid:'arduino',level:1}:
       id==='jsclient'?{key:'js-key',cid:'js',level:1}:null})
     manager=new Manager(server,auth)
