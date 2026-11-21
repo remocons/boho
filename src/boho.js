@@ -44,6 +44,22 @@ export function RAND(size) {
   return globalThis.crypto.getRandomValues(Buffer.alloc(size))
 }
 
+// The key and authentication buffers: [field, size]. They live in one zeroed block made on first
+// use (_block), and the fields are views into it made only when one is read or replaced (_state).
+// A server connection that is only given its login challenge (server_time_nonce, written into the
+// block directly) and never logs in holds the block alone: about 0.2 KB instead of 1.7 KB with a
+// buffer per field. A replaced field (this.localNonce = …) keeps the new buffer, as before.
+const STATE_FIELDS = [['_id8', 8], ['_otpSrc44', 44], ['_otp36', 36], ['_hmac', 32],
+  ['auth_salt12', 12], ['localNonce', 4], ['remoteNonce', 4]]
+const OFFSET = {}
+const STATE_BYTES = STATE_FIELDS.reduce((offset, [name, size]) => { OFFSET[name] = offset; return offset + size }, 0)
+
+function createViews(block) {
+  const state = {}
+  for (const [name, size] of STATE_FIELDS) state[name] = block.subarray(OFFSET[name], OFFSET[name] + size)
+  return state
+}
+
 /**
  * Boho security protocol class
  */
@@ -52,32 +68,38 @@ export class Boho {
    * @constructor
    */
   constructor() {
-
-    this._id8 = Buffer.alloc(8)
-    this._otpSrc44 = Buffer.alloc(44)
-    this._otp36 = Buffer.alloc(36)
-    this._hmac = Buffer.alloc(32)
-
-    this.auth_salt12 = Buffer.alloc(12)
-    this.localNonce = Buffer.alloc(4)
-    this.remoteNonce = Buffer.alloc(4)
+    this._block = null // see STATE_FIELDS
+    this._state = null // field views into _block, read and replaced through the accessors below
     this.isAuthorized = false
     this.counter = 0
     this._hasKey = false
     this._lastSendTime = 0
   }
 
+  _views() { return this._state ??= createViews(this._block ??= Buffer.alloc(STATE_BYTES)) }
+
+  get _id8() { return this._views()._id8 }
+  set _id8(value) { this._views()._id8 = value }
+  get _otpSrc44() { return this._views()._otpSrc44 }
+  set _otpSrc44(value) { this._views()._otpSrc44 = value }
+  get _otp36() { return this._views()._otp36 }
+  set _otp36(value) { this._views()._otp36 = value }
+  get _hmac() { return this._views()._hmac }
+  set _hmac(value) { this._views()._hmac = value }
+  get auth_salt12() { return this._views().auth_salt12 }
+  set auth_salt12(value) { this._views().auth_salt12 = value }
+  get localNonce() { return this._views().localNonce }
+  set localNonce(value) { this._views().localNonce = value }
+  get remoteNonce() { return this._views().remoteNonce }
+  set remoteNonce(value) { this._views().remoteNonce = value }
+
   /**
    * Initializes authentication state.
    */
   clearAuth() {
-    this._id8.fill(0)
-    this._otpSrc44.fill(0)
-    this._otp36.fill(0)
-    this._hmac.fill(0)
-    this.auth_salt12.fill(0)
-    this.localNonce.fill(0)
-    this.remoteNonce.fill(0)
+    // Nothing to clear before the first use. Replaced fields are not in the block: zero them too.
+    this._block?.fill(0)
+    if (this._state) for (const [name] of STATE_FIELDS) this._state[name].fill(0)
     this.isAuthorized = false
     this.counter = 0
     this._hasKey = false
@@ -283,18 +305,25 @@ export class Boho {
     const unixTime = Math.floor(now / 1000)
     const milliseconds = now % 1000;
 
-    this.localNonce = RAND(4)
-    //keep 
-    this.auth_salt12 = Buffer.concat([
-      MBP.NB('32L', unixTime),
-      MBP.NB('16L', milliseconds),
-      RAND(2),  // used for client's counter IV.
-      this.localNonce
-    ])
+    // salt12: unix time (32L), milliseconds (16L), 2 random bytes (the client's counter IV), nonce (4).
+    // localNonce holds its own copy of the nonce.
+    if (this._state) {
+      // Field views exist (an earlier login on this instance): replace them as fields.
+      this.localNonce = RAND(4)
+      this.auth_salt12 = Buffer.concat([MBP.NB('32L', unixTime), MBP.NB('16L', milliseconds), RAND(2), this.localNonce])
+    } else {
+      // Write straight into the block, without making the field views (see STATE_FIELDS).
+      const block = this._block ??= Buffer.alloc(STATE_BYTES), salt = OFFSET.auth_salt12
+      block.writeUInt32LE(unixTime, salt)
+      block.writeUInt16LE(milliseconds, salt + 4)
+      globalThis.crypto.getRandomValues(block.subarray(salt + 6, salt + 12))
+      block.copy(block, OFFSET.localNonce, salt + 8, salt + 12)
+    }
+    const salt12 = this._state ? this._state.auth_salt12 : this._block.subarray(OFFSET.auth_salt12, OFFSET.auth_salt12 + 12)
 
     let infoPack = Buffer.concat([
       MBP.NB('8', BohoMsg.SERVER_TIME_NONCE),
-      this.auth_salt12
+      salt12
     ])
     return infoPack
   }
