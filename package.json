@@ -1,6 +1,6 @@
 {
   "name": "boho",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Shared-key authentication and encrypted messages on standard Ascon (NIST SP 800-232) for Node.js, browsers and Arduino.",
   "type": "module",
   "exports": {

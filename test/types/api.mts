@@ -1,4 +1,4 @@
-import Boho, { type MetaSizeType, type OpenedPack } from 'boho'
+import Boho, { type MetaSizeType, type OpenedPack, type Buffer as BohoBuffer, type Boho as BohoClass } from 'boho'
 // @ts-expect-error Runtime exports only the default class.
 import { RAND } from 'boho'
 
@@ -19,3 +19,6 @@ const sizes: MetaSizeType = Boho.MetaSize
 const tag: Uint8Array = Boho.ascon.encrypt(new Uint8Array(16), new Uint8Array(16), 'x')
 Boho.sha256.hmac(Boho.RAND(32), Boho.Buffer.from('hello'))
 void plain; void header; void opened; void sizes.ENC; void tag
+const buffer: BohoBuffer = Boho.Buffer.from('typed')
+const instance: BohoClass = new Boho()
+void buffer; void instance

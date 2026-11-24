@@ -114,4 +114,6 @@ declare class Boho {
   decrypt_e2e(packet: Uint8Array, key: any): OpenedPack | undefined;
 }
 
+// Type-only exports kept from 2.x: iosignal and other packages refer to import('boho').Buffer.
+export type { Boho, Buffer };
 export default Boho;
