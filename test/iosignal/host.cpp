@@ -38,7 +38,7 @@ std::vector<uint8_t> unhex(const std::string& text) {
 void onMessage(char* tag, uint8_t, uint8_t* data, size_t size) {
   if (size && data[0]==Boho::ENC_PACK) {
     std::vector<uint8_t> plain(size);
-    auto length=io.decrypt_e2e(plain.data(),data,size,"interop-e2e-key");
+    uint32_t length=0; io.decrypt_e2e(plain.data(),data,size,"interop-e2e-key",length);
     received.push_back(std::string(tag)+":"+hex(plain.data(),length));
   } else received.push_back(std::string(tag)+":"+hex(data,size));
 }

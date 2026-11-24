@@ -12,7 +12,6 @@ import PatchedBoho from '../../dist/boho.js'
 const dir = fileURLToPath(new URL('.', import.meta.url))
 const iosignal = process.env.IOSIGNAL_PATH || resolve(dir, '../../../iosignal')
 const arduino = process.env.IOSIGNAL_ARDUINO_PATH || resolve(dir, '../../../iosignal-arduino')
-const bohoArduino = process.env.BOHO_ARDUINO_PATH || resolve(dir, '../../../boho-arduino')
 const load = path => import(pathToFileURL(join(iosignal, path)))
 const {Manager} = await load('src/server/Manager.js')
 const {serverOption} = await load('src/server/serverOption.js')
@@ -27,11 +26,10 @@ it('Arduino IOSignal (80-byte RX) ↔ real iosignal server ↔ JS client: auth, 
   let child, lines, io, manager
   try {
     const args=['-std=c++11','-ffunction-sections','-fdata-sections','-Wno-deprecated-declarations',
-      '-I',join(dir,'shims'),'-I',join(dir,'../arduino/shims'),'-I',join(arduino,'src'),'-I',join(bohoArduino,'src'),
-      join(dir,'host.cpp'),join(bohoArduino,'src/Boho.cpp'),...['CongPacket.cpp','IOSignal.cpp'].map(f=>join(arduino,'src',f)),
+      '-I',join(dir,'shims'),'-I',join(dir,'../arduino/shims'),'-I',join(arduino,'src'),
+      join(dir,'host.cpp'),...['Boho.cpp','BohoAscon.cpp','CongPacket.cpp','IOSignal.cpp'].map(f=>join(arduino,'src',f)),
       '-o',executable]
     args.push(process.platform==='darwin'?'-Wl,-dead_strip':'-Wl,--gc-sections')
-    if(process.platform!=='darwin')args.push('-lcrypto')
     const compiled=spawnSync('c++',args,{encoding:'utf8',timeout:20000})
     assert.equal(compiled.status,0,compiled.stderr||String(compiled.error))
     child=spawn(executable,[],{stdio:['pipe','pipe','inherit']})
@@ -84,7 +82,7 @@ it('Arduino IOSignal (80-byte RX) ↔ real iosignal server ↔ JS client: auth, 
     io.signal('arduino@t',Buffer.from('world'));await pump()
     assert.equal(await ask('MESSAGES'),'@t:776f726c64;')
     aSocket.emit('data',Buffer.from(await ask('E2E js@t 736563726574'),'hex'));await pump()
-    const secret=received.pop();assert.equal(secret.data[0],0xb6)
+    const secret=received.pop();assert.equal(secret.data[0],PatchedBoho.BohoMsg.ENC_PACK)
     assert.equal(io.decrypt_e2e(secret.data,'interop-e2e-key').data.toString(),'secret')
     assert.equal(io.decrypt_e2e(secret.data,'wrong-key'),undefined)
     io.signal_e2e('arduino@t',Buffer.from('reply'),'interop-e2e-key');await pump()

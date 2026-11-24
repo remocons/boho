@@ -1,582 +1,350 @@
-// Copyright (c) 2024 Taeo Lee (sixgen@gmail.com)
+// Copyright (c) 2024-2026 Taeo Lee (sixgen@gmail.com)
 // MIT License
 //
 // https://github.com/remocons/boho
 //
+// Boho 3: shared-key authentication and encrypted messages on Ascon (NIST SP 800-232).
 //
+//   login     SERVER_TIME_NONCE (13 B) → AUTH_REQ (33 B) → AUTH_RES (17 B)
+//   session   ENC / ENC_E2E: 21-byte header, Ascon-AEAD128 with an 8-byte tag
+//   pack/E2E  ENC_PACK: 29-byte header (16-byte nonce with an 8-byte sender value)
 //
-import { sha256 } from './sha256-mbp.js'
+// Keys: Ascon-CXOF128(Z = "boho/v2/key") of the key string, 16 bytes (deriveKey). A server
+// stores this derived key, never the key string. Each login makes a new session key.
+// Boho 2.x (SHA-256 based, classic/) is not supported: its message codes are not reused.
 import MBP from 'meta-buffer-pack'
-export { MBP }
-import { BohoMsg, Meta, MetaSize } from './constants.js'
-export { BohoMsg, Meta, MetaSize, sha256 }
 import { Buffer } from 'buffer/index.js'
-export { Buffer }
+import { encrypt, decrypt, cxof128 } from './ascon.js'
+import { BohoMsg, MetaSize } from './constants.js'
 
-// Avoid data-dependent early exits when comparing fixed-length tags.
-// JavaScript engines do not guarantee constant-time execution.
-function equalTag(a, b) {
+export { MBP, Buffer, BohoMsg, MetaSize }
+
+const KEY_CUSTOM = 'boho/v2/key'
+const SESSION_CUSTOM = 'boho/v2/session'
+const TAG = 8
+const KEY_SIZE = 16
+const DIR = { client: 1, server: 2 }  // the direction byte of what that side sends
+const encoder = new TextEncoder()
+
+/**
+ * Random bytes from the platform's cryptographic generator.
+ * @param {number} size
+ * @returns {Buffer}
+ */
+export function RAND (size) {
+  const out = Buffer.alloc(size)
+  globalThis.crypto.getRandomValues(out)
+  return out
+}
+
+function bytes (data) {
+  if (typeof data === 'string') return encoder.encode(data)
+  return MBP.B8(data)
+}
+
+function equal (a, b) {
   if (!(a instanceof Uint8Array) || !(b instanceof Uint8Array) || a.length !== b.length) return false
   let difference = 0
   for (let i = 0; i < a.length; i++) difference |= a[i] ^ b[i]
   return difference === 0
 }
 
-function readPacket(data, type, size, meta, variable = false) {
-  if (!(data instanceof Uint8Array)) return
-  const buffer = Buffer.from(data)
-  if (buffer.length < size || buffer[0] !== type) return
-  if (variable ? buffer.readUInt32LE(1) !== buffer.length - size : buffer.length !== size) return
-  return MBP.unpack(buffer, meta)
-}
-
-function validClock(clock) {
-  return clock.readUInt16LE(4) < 1000
-}
-
+function wipe (b) { if (b) b.fill(0) }
 
 /**
- * Generates a random byte buffer.
- * @param {number} size - Number of bytes to generate
+ * Key string (the part after "id." in id.key, or an E2E key) → the 16-byte key.
+ * Servers store it (for example base64) as the key of an ID.
+ * @param {string|Uint8Array} key
  * @returns {Buffer}
  */
-export function RAND(size) {
-  return globalThis.crypto.getRandomValues(Buffer.alloc(size))
+export function deriveKey (key) {
+  const k = bytes(key)
+  if (!k.length) throw new RangeError('key must not be empty')
+  return Buffer.from(cxof128(k, KEY_SIZE, KEY_CUSTOM))
 }
 
-// The key and authentication buffers: [field, size]. They live in one zeroed block made on first
-// use (_block), and the fields are views into it made only when one is read or replaced (_state).
-// A server connection that is only given its login challenge (server_time_nonce, written into the
-// block directly) and never logs in holds the block alone: about 0.2 KB instead of 1.7 KB with a
-// buffer per field. A replaced field (this.localNonce = …) keeps the new buffer, as before.
-const STATE_FIELDS = [['_id8', 8], ['_otpSrc44', 44], ['_otp36', 36], ['_hmac', 32],
-  ['auth_salt12', 12], ['localNonce', 4], ['remoteNonce', 4]]
-const OFFSET = {}
-const STATE_BYTES = STATE_FIELDS.reduce((offset, [name, size]) => { OFFSET[name] = offset; return offset + size }, 0)
-
-function createViews(block) {
-  const state = {}
-  for (const [name, size] of STATE_FIELDS) state[name] = block.subarray(OFFSET[name], OFFSET[name] + size)
-  return state
+function readHeader (packet) {
+  const view = new DataView(packet.buffer, packet.byteOffset, packet.byteLength)
+  return {
+    length: view.getUint32(1, true),
+    sec: view.getUint32(5, true),
+    ms: view.getUint16(9, true),
+    counter: view.getUint16(11, true)
+  }
 }
 
-/**
- * Boho security protocol class
- */
+function sessionNonce (header, dir) {
+  const nonce = new Uint8Array(16)
+  nonce.set(header.subarray(5, 13))
+  nonce[8] = dir
+  return nonce
+}
+
+function validChallenge (c) {
+  return c instanceof Uint8Array && c.length === MetaSize.SERVER_TIME_NONCE &&
+    c[0] === BohoMsg.SERVER_TIME_NONCE && (c[5] | (c[6] << 8)) < 1000
+}
+
 export class Boho {
-  /**
-   * @constructor
-   */
-  constructor() {
-    this._block = null // see STATE_FIELDS
-    this._state = null // field views into _block, read and replaced through the accessors below
+  constructor () {
+    /** True after a verified login (AUTH_RES on a client, AUTH_REQ on a server). */
     this.isAuthorized = false
-    this.counter = 0
-    this._hasKey = false
-    this._lastSendTime = 0
+    this._id8 = new Uint8Array(8)
+    this._key = null
+    this._sessionKey = null
+    this._serverProof = null
+    this._challenge = null
+    this._role = null          // 'client' or 'server': which direction byte this side sends
+    this._lastMs = -1
+    this._lastCounter = 0
+    this._sender = null
   }
 
-  _views() { return this._state ??= createViews(this._block ??= Buffer.alloc(STATE_BYTES)) }
-
-  get _id8() { return this._views()._id8 }
-  set _id8(value) { this._views()._id8 = value }
-  get _otpSrc44() { return this._views()._otpSrc44 }
-  set _otpSrc44(value) { this._views()._otpSrc44 = value }
-  get _otp36() { return this._views()._otp36 }
-  set _otp36(value) { this._views()._otp36 = value }
-  get _hmac() { return this._views()._hmac }
-  set _hmac(value) { this._views()._hmac = value }
-  get auth_salt12() { return this._views().auth_salt12 }
-  set auth_salt12(value) { this._views().auth_salt12 = value }
-  get localNonce() { return this._views().localNonce }
-  set localNonce(value) { this._views().localNonce = value }
-  get remoteNonce() { return this._views().remoteNonce }
-  set remoteNonce(value) { this._views().remoteNonce = value }
-
-  /**
-   * Initializes authentication state.
-   */
-  clearAuth() {
-    // Nothing to clear before the first use. Replaced fields are not in the block: zero them too.
-    this._block?.fill(0)
-    if (this._state) for (const [name] of STATE_FIELDS) this._state[name].fill(0)
+  clearAuth () {
+    wipe(this._id8); wipe(this._key); wipe(this._sessionKey); wipe(this._serverProof)
+    this._key = this._sessionKey = this._serverProof = this._role = null
     this.isAuthorized = false
-    this.counter = 0
-    this._hasKey = false
-    this._lastSendTime = 0
   }
+
+  /** The login ID: at most 8 bytes are used. */
+  set_id8 (id) {
+    this._id8 = new Uint8Array(8)
+    this._id8.set(bytes(id).subarray(0, 8))
+  }
+
+  copy_id8 (id8) {
+    this._id8 = Uint8Array.from(id8.subarray(0, 8))
+  }
+
+  /** Key string → key. A new key ends the session. */
+  set_key (key) {
+    this.isAuthorized = false
+    wipe(this._sessionKey); this._sessionKey = null
+    this._key = key ? deriveKey(key) : null
+  }
+
+  /** A stored 16-byte key (deriveKey), on a server. */
+  copy_key (key16) {
+    if (!(key16 instanceof Uint8Array) || key16.length !== KEY_SIZE) throw new RangeError('key must be 16 bytes')
+    this.isAuthorized = false
+    wipe(this._sessionKey); this._sessionKey = null
+    this._key = Uint8Array.from(key16)
+  }
+
+  /** 'id.key' */
+  set_id_key (idKey) {
+    const dot = typeof idKey === 'string' ? idKey.indexOf('.') : -1
+    if (dot < 1 || dot === idKey.length - 1) { this.clearAuth(); return }
+    this.set_id8(idKey.slice(0, dot))
+    this.set_key(idKey.slice(dot + 1))
+  }
+
+  _session (challenge, id8, clientNonce) {
+    const input = new Uint8Array(KEY_SIZE + 13 + 8 + 8)
+    input.set(this._key, 0)
+    input.set(challenge, 16)
+    input.set(id8, 29)
+    input.set(clientNonce, 37)
+    const out = cxof128(input, 48, SESSION_CUSTOM)
+    wipe(input)
+    return out
+  }
+
+  // ---- server ----
 
   /**
-   * Sets id8 by hashing the input data.
-   * @param {any} data
-   */
-  set_hash_id8(data) {
-    let idSum = MBP.B8(sha256.hash(data))
-    idSum.copy(this._id8, 0, 0, 8)
-  }
-
-  /**
-   * Sets the id8 value.
-   * @param {any} data
-   */
-  set_id8(data) {
-    let encStr = MBP.B8(data)
-    this._id8.fill(0)
-    encStr.copy(this._id8, 0, 0, 8)
-  }
-
-  /**
-   * Sets the key value by hashing and storing in otpSrc44.
-   * @param {any} data
-   */
-  set_key(data) {
-    const bytes = MBP.B8(data)
-    if (!bytes || bytes.length === 0) throw new TypeError('Key must not be empty')
-    this.copy_key(MBP.B8(sha256.hash(bytes)))
-  }
-
-  /**
-   * Splits 'id.key' string and sets id8 and key.
-   * @param {string} id_key
-   */
-  set_id_key(id_key) {
-    let delimiterPosition = id_key.indexOf('.')
-    if (delimiterPosition == -1) return
-    let id = id_key.substring(0, delimiterPosition)
-    let key = id_key.substring(delimiterPosition + 1)
-    this.set_id8(id)
-    this.set_key(key)
-  }
-
-  /**
-   * Copies id8 value from external buffer.
-   * @param {Buffer} data
-   */
-  copy_id8(data) {
-    data.copy(this._id8, 0, 0, 8)
-  }
-
-  /**
-   * Copies key value from external buffer.
-   * @param {Buffer} data
-   */
-  copy_key(data) {
-    if (!(data instanceof Uint8Array) || data.length !== 32) {
-      throw new TypeError('copy_key requires exactly 32 bytes')
-    }
-    this._otpSrc44.set(data, 0)
-    this._hasKey = true
-
-  }
-
-  /**
-   * Applies sha256 hash n times.
-   * @param {any} srcData
-   * @param {number} n
-   * @returns {Uint8Array}
-   */
-  sha256_n(srcData, n) {
-    let hashSum = sha256.hash(srcData)
-    for (let i = 0; i < n; i++) hashSum = sha256.hash(hashSum)
-    return hashSum
-  }
-
-
-  /**
-   * Sets random clock value (salt12) in otpSrc44.
-   */
-  set_clock_rand() {
-    this.set_clock_nonce(RAND(4))
-  }
-
-  /** Sets a monotonic clock/counter and a 4-byte nonce. */
-  set_clock_nonce(nonce) {
-    if (!(nonce instanceof Uint8Array) || nonce.length !== 4) {
-      throw new TypeError('Nonce must be 4 bytes')
-    }
-    let now = Math.max(Date.now(), this._lastSendTime)
-    this.counter = (this.counter + 1) & 0xffff
-    if (this.counter === 0 && now === this._lastSendTime) now++
-    if (!Number.isSafeInteger(now) || now < 0 || Math.floor(now / 1000) > 0xffffffff) {
-      throw new RangeError('Clock is outside the protocol range')
-    }
-    this._lastSendTime = now
-    const salt12 = Buffer.concat([
-      MBP.NB('32L', Math.floor(now / 1000)),
-      MBP.NB('16L', now % 1000),
-      MBP.NB('16L', this.counter),
-      Buffer.from(nonce)
-    ])
-    salt12.copy(this._otpSrc44, 32)
-  }
-
-  _requireKey() {
-    if (!this._hasKey) throw new Error('Set a key before encryption or authentication')
-  }
-
-  /**
-   * Sets salt12 value in otpSrc44.
-   * @param {Buffer} salt12
-   */
-  set_salt12(salt12 , caller) {
-    // console.log('boho.set_salt12', salt12  , caller )
-    if( salt12.byteLength != 12){
-      throw TypeError('set_salt12: Invalid salt12 byteLength.')
-    } 
-    salt12.copy(this._otpSrc44, 32)
-  }
-
-  /**
-   * Initializes OTP value.
-   */
-  resetOTP() {
-    this._requireKey()
-    let otp32 = MBP.B8(sha256.hash(this._otpSrc44))
-    otp32.copy(this._otp36, 0, 0, 32)
-  }
-
-  /**
-   * Returns OTP value for the given index.
-   * @param {number} otpIndex
-   * @returns {Uint8Array}
-   */
-  getIndexOTP(otpIndex) {
-    this._otp36.writeUInt32LE(otpIndex, 32)
-    return sha256.hash(this._otp36)
-  }
-
-  /**
-   * Generates the legacy SHA-256 prefix tag (not standard HMAC).
-   * @param {Buffer} data
-   */
-  generateHMAC(data) {
-    this._requireKey()
-    let hmacSrc = Buffer.concat([this._otpSrc44, data])
-    this._hmac = MBP.B8(sha256.hash(hmacSrc))
-  }
-
-  /**
-   * Returns the truncated 8-byte legacy tag (not standard HMAC).
-   * @param {Buffer} data
+   * The server's challenge: type | unixTime4 | ms2 | random2 | random4 (13 bytes).
+   * Kept for verify_auth_req.
    * @returns {Buffer}
    */
-  getHMAC8(data) {
-    this._requireKey()
-    let hmacSrc = Buffer.concat([this._otpSrc44, data])
-    this._hmac = MBP.B8(sha256.hash(hmacSrc))
-    return this._hmac.subarray(0, 8)
-  }
-
-  /**
-   * OTP-based XOR encryption/decryption
-   * @param {Buffer} data
-   * @param {number} [otpStartIndex=0]
-   * @param {boolean} [shareDataBuffer=false]
-   * @returns {Buffer}
-   */
-  xotp(data, otpStartIndex = 0, shareDataBuffer = false) {
-
-    data = MBP.B8(data, shareDataBuffer)
-
-    let len = data.byteLength
-    let otpIndex = otpStartIndex
-    let dataOffset = 0
-    let xorCalcLen = 0
-
-    while (len > 0) {
-      xorCalcLen = len < 32 ? len : 32
-      let iotp = this.getIndexOTP(++otpIndex);
-      for (let i = 0; i < xorCalcLen; i++) {
-        data[dataOffset++] ^= iotp[i]
-      }
-      len -= 32
-    }
-    return data
-  }
-
-  // B. AUTH process
-
-  /**
-   * Generates server time and nonce signal
-   * @returns {Buffer}
-   */
-  server_time_nonce() {
+  server_time_nonce () {
     const now = Date.now()
-    const unixTime = Math.floor(now / 1000)
-    const milliseconds = now % 1000;
+    const packet = Buffer.alloc(MetaSize.SERVER_TIME_NONCE)
+    packet[0] = BohoMsg.SERVER_TIME_NONCE
+    packet.writeUInt32LE(Math.floor(now / 1000), 1)
+    packet.writeUInt16LE(now % 1000, 5)
+    globalThis.crypto.getRandomValues(packet.subarray(7, 13))
+    this._challenge = Buffer.from(packet)
+    return packet
+  }
 
-    // salt12: unix time (32L), milliseconds (16L), 2 random bytes (the client's counter IV), nonce (4).
-    // localNonce holds its own copy of the nonce.
-    if (this._state) {
-      // Field views exist (an earlier login on this instance): replace them as fields.
-      this.localNonce = RAND(4)
-      this.auth_salt12 = Buffer.concat([MBP.NB('32L', unixTime), MBP.NB('16L', milliseconds), RAND(2), this.localNonce])
+  /**
+   * Checks a client's AUTH_REQ against the challenge this side sent (server_time_nonce, or the
+   * one given), with the ID's stored key (copy_key). On success the session is ready and
+   * AUTH_RES is returned.
+   * @returns {Buffer|false}
+   */
+  verify_auth_req (packet, challenge = this._challenge) {
+    if (!this._key || !validChallenge(challenge) || !(packet instanceof Uint8Array) ||
+        packet.length !== MetaSize.AUTH_REQ || packet[0] !== BohoMsg.AUTH_REQ) return false
+    const id8 = packet.subarray(1, 9)
+    const out = this._session(challenge, id8, packet.subarray(9, 17))
+    if (!equal(packet.subarray(17, 33), out.subarray(16, 32))) { wipe(out); return false }
+    this._id8 = Uint8Array.from(id8)
+    this._sessionKey = out.slice(0, 16)
+    this._role = 'server'
+    this.isAuthorized = true
+    const res = Buffer.alloc(MetaSize.AUTH_RES)
+    res[0] = BohoMsg.AUTH_RES
+    res.set(out.subarray(32, 48), 1)
+    wipe(out)
+    return res
+  }
+
+  // ---- client ----
+
+  /**
+   * AUTH_REQ for the server's SERVER_TIME_NONCE.
+   * @returns {Buffer|false}
+   */
+  auth_req (serverTimeNonce, clientNonce = RAND(8)) {
+    if (!this._key || !validChallenge(serverTimeNonce)) return false
+    const out = this._session(serverTimeNonce, this._id8, clientNonce)
+    this._sessionKey = out.slice(0, 16)
+    this._serverProof = out.slice(32, 48)
+    this._role = 'client'
+    this.isAuthorized = false
+    const packet = Buffer.alloc(MetaSize.AUTH_REQ)
+    packet[0] = BohoMsg.AUTH_REQ
+    packet.set(this._id8, 1)
+    packet.set(clientNonce, 9)
+    packet.set(out.subarray(16, 32), 17)
+    wipe(out)
+    return packet
+  }
+
+  /** Checks the server's AUTH_RES. */
+  verify_auth_res (packet) {
+    if (!this._serverProof || !(packet instanceof Uint8Array) || packet.length !== MetaSize.AUTH_RES ||
+        packet[0] !== BohoMsg.AUTH_RES || !equal(packet.subarray(1), this._serverProof)) return
+    wipe(this._serverProof); this._serverProof = null
+    this.isAuthorized = true
+    return true
+  }
+
+  // ---- messages ----
+
+  // The next outgoing (time, counter): strictly increasing, from the wall clock.
+  _nextClock () {
+    let ms = Date.now()
+    let counter
+    if (ms > this._lastMs) {
+      counter = (this._lastCounter + 1) & 0xffff
     } else {
-      // Write straight into the block, without making the field views (see STATE_FIELDS).
-      const block = this._block ??= Buffer.alloc(STATE_BYTES), salt = OFFSET.auth_salt12
-      block.writeUInt32LE(unixTime, salt)
-      block.writeUInt16LE(milliseconds, salt + 4)
-      globalThis.crypto.getRandomValues(block.subarray(salt + 6, salt + 12))
-      block.copy(block, OFFSET.localNonce, salt + 8, salt + 12)
+      ms = this._lastMs
+      counter = this._lastCounter + 1
+      if (counter > 0xffff) { ms++; counter = 0 }
     }
-    const salt12 = this._state ? this._state.auth_salt12 : this._block.subarray(OFFSET.auth_salt12, OFFSET.auth_salt12 + 12)
+    this._lastMs = ms
+    this._lastCounter = counter
+    return { sec: Math.floor(ms / 1000), ms: ms % 1000, counter }
+  }
 
-    let infoPack = Buffer.concat([
-      MBP.NB('8', BohoMsg.SERVER_TIME_NONCE),
-      salt12
-    ])
-    return infoPack
+  _header (type, length) {
+    const clock = this._nextClock()
+    const h = new Uint8Array(13)
+    const view = new DataView(h.buffer)
+    h[0] = type
+    view.setUint32(1, length, true)
+    view.setUint32(5, clock.sec, true)
+    view.setUint16(9, clock.ms, true)
+    view.setUint16(11, clock.counter, true)
+    return h
   }
 
   /**
-   * Generates AUTH_REQ message
-   * @param {Buffer} buffer server's time nonce
-   * @returns {Buffer|boolean}
-   */
-  auth_req(buffer) {
-    if (!this._hasKey) return false
-    let server_time_nonce = readPacket(buffer, BohoMsg.SERVER_TIME_NONCE, MetaSize.SERVER_TIME_NONCE, Meta.SERVER_TIME_NONCE)
-    if (server_time_nonce && server_time_nonce.milTime >= 1000) return false
-    if (server_time_nonce) {
-      let salt12 = Buffer.concat([
-        MBP.NB('32L', server_time_nonce.unixTime),
-        MBP.NB('16L', server_time_nonce.milTime),
-        MBP.NB('16L', server_time_nonce.counter),
-        server_time_nonce.nonce
-      ])
-
-      this.set_salt12(salt12, 'auth_req')
-
-      this.localNonce = RAND(4)
-      this.generateHMAC(this.localNonce)
-
-      this.remoteNonce = server_time_nonce.nonce
-
-      let auth_hmac_buffer = MBP.pack(
-        MBP.MB('#header', '8', BohoMsg.AUTH_REQ),
-        MBP.MB('#id8', this._id8),
-        MBP.MB('#nonce', this.localNonce),
-        MBP.MB('#hmac32', this._hmac),
-      )
-
-      return auth_hmac_buffer
-    }
-    return false
-  }
-
-  /*  
-      step 4.  for server
-   */
-
-  /**
-   * Verify client's AUTH_REQ.
-   * @param {Buffer|object} data
-   * @returns {boolean}
-   */
-  verify_auth_req(data) {
-
-    if (!this._hasKey) return false
-    let infoPack
-    if (data instanceof Uint8Array) {
-      infoPack = readPacket(data, BohoMsg.AUTH_REQ, MetaSize.AUTH_REQ, Meta.AUTH_REQ)
-    } else if (data && typeof data === 'object') {
-      infoPack = data
-    }
-    if (!infoPack || infoPack.header !== BohoMsg.AUTH_REQ ||
-        !(infoPack.id8 instanceof Uint8Array) || infoPack.id8.length !== 8 ||
-        !(infoPack.nonce instanceof Uint8Array) || infoPack.nonce.length !== 4 ||
-        !(infoPack.hmac32 instanceof Uint8Array) || infoPack.hmac32.length !== 32 ||
-        (infoPack.$OTHERS && infoPack.$OTHERS.length !== 0)) return false
-
-    this.set_salt12(this.auth_salt12, 'verify_auth_req 1/2')
-
-    this.generateHMAC(infoPack.nonce)
-    let hmac32 = this._hmac
-
-    if (equalTag(infoPack.hmac32, hmac32)) {
-      this.remoteNonce = Buffer.from(infoPack.nonce)
-
-      let salt12 = Buffer.concat([
-        this.localNonce,
-        this.remoteNonce,
-        this.localNonce
-      ])
-
-      this.set_salt12(salt12, 'verify_auth_req 2/2')
-      this.generateHMAC(infoPack.nonce)
-      let replyHMAC = this._hmac
-
-      let auth_res = MBP.rawPack(
-        MBP.MB('header', '8', BohoMsg.AUTH_RES),
-        MBP.MB('hmac32', replyHMAC)
-      )
-      this.isAuthorized = true
-      return auth_res
-    }
-    return false
-  }
-
-  /**
-   * Verifies server's AUTH_RES HMAC.
-   * @param {Buffer} buffer
-   * @returns {boolean}
-   */
-  verify_auth_res(buffer) {
-    if (!this._hasKey) return false
-    let auth_res = readPacket(buffer, BohoMsg.AUTH_RES, MetaSize.AUTH_RES, Meta.AUTH_RES)
-    if (auth_res) {
-      let salt12 = Buffer.concat([
-        this.remoteNonce,
-        this.localNonce,
-        this.remoteNonce,
-      ])
-      this.set_salt12(salt12, 'verify_auth_res')
-      this.generateHMAC(this.localNonce)
-      let hmac32 = this._hmac
-      if (equalTag(hmac32, auth_res.hmac32)) {
-        this.isAuthorized = true
-        return true
-      }
-    }
-    return
-  }
-
-  // C. Secure Communication
-
-  // Must AUTH first.
-  /**
-   * Generates encrypted 488 packet after authentication
-   * @param {Buffer} data
+   * ENC (the whole message) or ENC_E2E (a routing header; the caller appends the E2E body).
+   * Only after a verified login.
    * @returns {Buffer|undefined}
    */
-  encrypt_488(data) {
-    if (!this.isAuthorized || !this._hasKey) return
-
-    data = MBP.B8(data)
-
-    this.set_clock_nonce(this.remoteNonce)
-    this.resetOTP()
-
-    let hmac8 = this.getHMAC8(data)
-    let encData = this.xotp(data)
-
-    let pack = MBP.pack(
-      MBP.MB('#type', '8', BohoMsg.ENC_488),
-      MBP.MB('#len', '32L', data.byteLength),
-      MBP.MB('#otpSrc8', this._otpSrc44.subarray(32, 40)),
-      MBP.MB('#hmac8', hmac8),
-      MBP.MB('#xdata', encData)
-    )
-    return pack
+  encrypt_session (data, type = BohoMsg.ENC) {
+    if (!this.isAuthorized || !this._sessionKey) return
+    if (type !== BohoMsg.ENC && type !== BohoMsg.ENC_E2E) return
+    const plain = bytes(data)
+    const header = this._header(type, plain.length)
+    const sealed = encrypt(this._sessionKey, sessionNonce(header, DIR[this._role]), plain, header, TAG)
+    const packet = Buffer.alloc(MetaSize.ENC + plain.length)
+    packet.set(header, 0)
+    packet.set(sealed.subarray(plain.length), 13)
+    packet.set(sealed.subarray(0, plain.length), 21)
+    return packet
   }
 
   /**
-   * Decrypts 488 packet after authentication
-   * @param {Buffer} data
-   * @returns {Buffer|undefined}
+   * Opens ENC (exact length) or the routing header of ENC_E2E (the body after it is not read).
+   * @returns {Buffer|undefined} the plaintext
    */
-  decrypt_488(data) {
-    if (!this.isAuthorized || !this._hasKey) return
-    // iosignal ENC_E2E wraps only an encrypted routing header. The remaining
-    // bytes are an opaque end-to-end packet and must not enter this decryptor.
-    let header = data
-    if (data instanceof Uint8Array && data[0] === BohoMsg.ENC_E2E) {
-      if (data.length < MetaSize.ENC_488) return
-      const packet = Buffer.from(data)
-      const headerLength = packet.readUInt32LE(1)
-      if (headerLength > packet.length - MetaSize.ENC_488) return
-      header = Buffer.from(packet.subarray(0, MetaSize.ENC_488 + headerLength))
-      header[0] = BohoMsg.ENC_488
-    }
-    const pack = readPacket(header, BohoMsg.ENC_488, MetaSize.ENC_488, Meta.ENC_488, true)
-    if (!pack || !validClock(pack.otpSrc8)) return
-    this.set_salt12(Buffer.concat([pack.otpSrc8, this.localNonce]), 'decrypt_488')
-    this.resetOTP()
-    const decData = this.xotp(pack.$OTHERS ?? Buffer.alloc(0))
-    if (!equalTag(this.getHMAC8(decData), pack.hmac8)) return
-    // Session freshness/replay policy belongs to the caller (iosignal).
-    return decData
+  decrypt_session (packet) {
+    if (!this.isAuthorized || !this._sessionKey || !(packet instanceof Uint8Array) || packet.length < MetaSize.ENC) return
+    const type = packet[0]
+    if (type !== BohoMsg.ENC && type !== BohoMsg.ENC_E2E) return
+    const h = readHeader(packet)
+    const room = packet.length - MetaSize.ENC
+    if (h.length > room || (type === BohoMsg.ENC && h.length !== room) || h.ms >= 1000) return
+    const header = packet.subarray(0, 13)
+    const sealed = new Uint8Array(h.length + TAG)
+    sealed.set(packet.subarray(21, 21 + h.length))
+    sealed.set(packet.subarray(13, 21), h.length)
+    const other = this._role === 'client' ? DIR.server : DIR.client
+    const plain = decrypt(this._sessionKey, sessionNonce(header, other), sealed, header, TAG)
+    return plain ? Buffer.from(plain.buffer, plain.byteOffset, plain.byteLength) : undefined
   }
 
-  /**
-   * Generates encrypted packet for up to 2^32-1 bytes
-   * @param {Buffer} data
-   * @returns {Buffer}
-   */
-  encryptPack(data) {
-    this._requireKey()
-    data = MBP.B8(data)
-
-    this.set_clock_rand()
-    this.resetOTP()
-
-    let hmac8 = this.getHMAC8(data)
-    let encData = this.xotp(data)
-
-    let pack = MBP.pack(
-      MBP.MB('#type', '8', BohoMsg.ENC_PACK),
-      MBP.MB('#len', '32L', data.byteLength),
-      MBP.MB('#salt12', this._otpSrc44.subarray(32)),
-      MBP.MB('#hmac8', hmac8),
-      MBP.MB('#xdata', encData)
-    )
-    return pack
+  _seal (key, data) {
+    const plain = bytes(data)
+    this._sender ??= RAND(8)
+    const clock = this._nextClock()
+    const head = new Uint8Array(21)
+    const view = new DataView(head.buffer)
+    head[0] = BohoMsg.ENC_PACK
+    view.setUint32(1, plain.length, true)
+    view.setUint32(5, clock.sec, true)
+    view.setUint16(9, clock.ms, true)
+    view.setUint16(11, clock.counter, true)
+    head.set(this._sender, 13)
+    const sealed = encrypt(key, head.subarray(5, 21), plain, head.subarray(0, 5), TAG)
+    const packet = Buffer.alloc(MetaSize.ENC_PACK + plain.length)
+    packet.set(head, 0)
+    packet.set(sealed.subarray(plain.length), 21)
+    packet.set(sealed.subarray(0, plain.length), 29)
+    return packet
   }
 
-  /**
-   * Decrypts encrypted packet
-   * @param {Buffer} data
-   * @returns {Buffer}
-   */
-  decryptPack(data) {
-    if (!this._hasKey) return
-    const pack = readPacket(data, BohoMsg.ENC_PACK, MetaSize.ENC_PACK, Meta.ENC_PACK, true)
-    if (!pack) return
-    this.set_salt12(pack.salt12, 'decryptPack')
-    this.resetOTP()
-    const decData = this.xotp(pack.$OTHERS ?? Buffer.alloc(0))
-    if (!equalTag(pack.hmac, this.getHMAC8(decData))) return
-    pack.data = decData
-    return pack
-  }
-
-  /**
-   * End-to-end encryption
-   * @param {Buffer} data
-   * @param {Buffer} key
-   * @returns {Buffer}
-   */
-  encrypt_e2e(data, key) {
-    return this._withKey(key, () => this.encryptPack(data))
-  }
-
-  /**
-   * End-to-end decryption
-   * @param {Buffer} data
-   * @param {Buffer} key
-   * @returns {Buffer}
-   */
-  decrypt_e2e(data, key) {
-    return this._withKey(key, () => this.decryptPack(data))
-  }
-
-  _withKey(key, operation) {
-    const bytes = MBP.B8(key)
-    if (!bytes || bytes.length === 0) throw new TypeError('Key must not be empty')
-    const state = [Buffer.from(this._otpSrc44), Buffer.from(this._otp36), Buffer.from(this._hmac)]
-    const hadKey = this._hasKey
-    try {
-      this._otpSrc44.set(sha256.hash(bytes), 0)
-      this._hasKey = true
-      return operation()
-    } finally {
-      this._otpSrc44.set(state[0])
-      this._otp36.set(state[1])
-      this._hmac.set(state[2])
-      this._hasKey = hadKey
-      for (const buffer of state) buffer.fill(0)
+  _open (key, packet) {
+    if (!(packet instanceof Uint8Array) || packet.length < MetaSize.ENC_PACK || packet[0] !== BohoMsg.ENC_PACK) return
+    const h = readHeader(packet)
+    if (h.length !== packet.length - MetaSize.ENC_PACK || h.ms >= 1000) return
+    const sealed = new Uint8Array(h.length + TAG)
+    sealed.set(packet.subarray(29))
+    sealed.set(packet.subarray(21, 29), h.length)
+    const plain = decrypt(key, packet.subarray(5, 21), sealed, packet.subarray(0, 5), TAG)
+    if (!plain) return
+    return {
+      type: BohoMsg.ENC_PACK, len: h.length, sec: h.sec, ms: h.ms, counter: h.counter,
+      sender: Buffer.from(packet.subarray(13, 21)),
+      data: Buffer.from(plain.buffer, plain.byteOffset, plain.byteLength)
     }
   }
 
+  /** ENC_PACK with this side's key. */
+  encryptPack (data) { if (this._key) return this._seal(this._key, data) }
+
+  /** Opens ENC_PACK with this side's key: { data, sec, ms, counter, sender, ... } or undefined. */
+  decryptPack (packet) { if (this._key) return this._open(this._key, packet) }
+
+  /** ENC_PACK with an E2E key string. */
+  encrypt_e2e (data, key) {
+    if (!key) return
+    const k = deriveKey(key)
+    try { return this._seal(k, data) } finally { wipe(k) }
+  }
+
+  /** Opens ENC_PACK with an E2E key string: { data, ... } or undefined. */
+  decrypt_e2e (packet, key) {
+    if (!key) return
+    const k = deriveKey(key)
+    try { return this._open(k, packet) } finally { wipe(k) }
+  }
 }
 
+Boho.deriveKey = deriveKey

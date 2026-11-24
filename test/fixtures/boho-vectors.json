@@ -1,0 +1,370 @@
+{
+  "format": "boho-vectors",
+  "version": 1,
+  "design": "docs/PROTOCOL.md",
+  "notes": "All byte strings are lowercase hex. Integers are little-endian on the wire. Ascon is NIST SP 800-232.",
+  "constants": {
+    "types": {
+      "SERVER_TIME_NONCE": 176,
+      "AUTH_FAIL": 179,
+      "AUTH_REQ": 180,
+      "AUTH_RES": 181,
+      "ENC_PACK": 185,
+      "ENC_E2E": 186,
+      "ENC": 187
+    },
+    "dir": {
+      "CLIENT_TO_SERVER": 1,
+      "SERVER_TO_CLIENT": 2
+    },
+    "custom": {
+      "KEY": "boho/v2/key",
+      "SESSION": "boho/v2/session"
+    },
+    "sizes": {
+      "SERVER_TIME_NONCE": 13,
+      "AUTH_REQ": 33,
+      "AUTH_RES": 17,
+      "TRANSCRIPT": 29,
+      "TAG": 8,
+      "PROOF": 16,
+      "ENC_HEADER": 21,
+      "ENC_AD": 13,
+      "ENC_PACK_HEADER": 29,
+      "ENC_PACK_AD": 5
+    }
+  },
+  "keys": [
+    {
+      "key": "secret",
+      "derived": "0205c25bd8a0ff8939d3a66b562f85da"
+    },
+    {
+      "key": "interop-shared-key",
+      "derived": "09f5d47848d018906ff990f3858cb544"
+    },
+    {
+      "key": "비밀키-한글",
+      "derived": "2d15722fecfb11d1a4e3a3e1806fe861"
+    },
+    {
+      "key": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk",
+      "derived": "7c7213ef3dd6488488291d2c584dd43e"
+    }
+  ],
+  "logins": [
+    {
+      "key": "secret",
+      "id": "dev1",
+      "challenge": "b0008124697b003412a1b2c3d4",
+      "clientNonce": "0001020304050607",
+      "transcript": "b0008124697b003412a1b2c3d464657631000000000001020304050607",
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "clientProof": "62bc01ab5d82448e87ebc9634b6ed509",
+      "serverProof": "c6ff42959c567faa9f2138bbc46cf02c",
+      "authReq": "b46465763100000000000102030405060762bc01ab5d82448e87ebc9634b6ed509",
+      "authRes": "b5c6ff42959c567faa9f2138bbc46cf02c"
+    },
+    {
+      "key": "interop-shared-key",
+      "id": "12345678",
+      "challenge": "b001812469e703000000000000",
+      "clientNonce": "f0e1d2c3b4a59687",
+      "transcript": "b001812469e7030000000000003132333435363738f0e1d2c3b4a59687",
+      "sessionKey": "45f73ddb32d058a3da3e9f72db4bc53e",
+      "clientProof": "11bc6bb674f394d52a9c7a7c8f935ed2",
+      "serverProof": "6e1a58058927a1ce5fa0fbbf70c99873",
+      "authReq": "b43132333435363738f0e1d2c3b4a5968711bc6bb674f394d52a9c7a7c8f935ed2",
+      "authRes": "b56e1a58058927a1ce5fa0fbbf70c99873"
+    },
+    {
+      "key": "비밀키-한글",
+      "id": "uno",
+      "challenge": "b0000000000000ffffffffffff",
+      "clientNonce": "ffffffffffffffff",
+      "transcript": "b0000000000000ffffffffffff756e6f0000000000ffffffffffffffff",
+      "sessionKey": "31f9fe5b6fdc1c3fa5a5f45dc483e5eb",
+      "clientProof": "3495e8ffaea837ec6f4cad4f033dfa61",
+      "serverProof": "b207eddb5cb89e4222cad32c4e3d6eeb",
+      "authReq": "b4756e6f0000000000ffffffffffffffff3495e8ffaea837ec6f4cad4f033dfa61",
+      "authRes": "b5b207eddb5cb89e4222cad32c4e3d6eeb"
+    }
+  ],
+  "messages": [
+    {
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "type": "ENC",
+      "dir": 1,
+      "sec": 1764000000,
+      "ms": 124,
+      "counter": 4661,
+      "plaintext": "",
+      "e2eBody": "",
+      "packet": "bb00000000008124697c003512b706d62ac02cb5a2"
+    },
+    {
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "type": "ENC",
+      "dir": 1,
+      "sec": 1764000000,
+      "ms": 125,
+      "counter": 4662,
+      "plaintext": "d068656c6c6f",
+      "e2eBody": "",
+      "packet": "bb06000000008124697d0036120979acf524da1a41ab37b9c4776f"
+    },
+    {
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "type": "ENC",
+      "dir": 2,
+      "sec": 1764000000,
+      "ms": 125,
+      "counter": 4662,
+      "plaintext": "d068656c6c6f",
+      "e2eBody": "",
+      "packet": "bb06000000008124697d003612c12ee3ccc1a178112a5423f7e47b"
+    },
+    {
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "type": "ENC",
+      "dir": 1,
+      "sec": 1764000002,
+      "ms": 0,
+      "counter": 1,
+      "plaintext": "000102030405060708090a0b0c0d0e",
+      "e2eBody": "",
+      "packet": "bb0f0000000281246900000100ebd83778ccead0a84e7733931f1e6709c3e750f98b4aff"
+    },
+    {
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "type": "ENC",
+      "dir": 1,
+      "sec": 1764000002,
+      "ms": 0,
+      "counter": 2,
+      "plaintext": "000102030405060708090a0b0c0d0e0f",
+      "e2eBody": "",
+      "packet": "bb100000000281246900000200516b20125acee70fdcd289ae7ed0548a78cb7d89efffabed"
+    },
+    {
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "type": "ENC",
+      "dir": 1,
+      "sec": 1764000002,
+      "ms": 0,
+      "counter": 3,
+      "plaintext": "000102030405060708090a0b0c0d0e0f10",
+      "e2eBody": "",
+      "packet": "bb110000000281246900000300bafee49163e629598398a78031ae6d2d999905f24f73833e49"
+    },
+    {
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "type": "ENC",
+      "dir": 2,
+      "sec": 4294967295,
+      "ms": 999,
+      "counter": 65535,
+      "plaintext": "0708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f4041",
+      "e2eBody": "",
+      "packet": "bb3b000000ffffffffe703ffffb3f757b649b93bfda284e65b77f92c14c63d77c28e33fd48572a50b8332f799cf11822fee54d34e9d5da7a960da60c69d10d02114991f3a37d2cbfdd8f9cb95489bef8"
+    },
+    {
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "type": "ENC_E2E",
+      "dir": 1,
+      "sec": 1764000003,
+      "ms": 500,
+      "counter": 9,
+      "plaintext": "d2d3d4d5d6d7d8d9dadb",
+      "e2eBody": "b9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "packet": "ba0a00000003812469f4010900b7c8467ee4d52df58afa9c523657bf47afdbb9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "packs": [
+    {
+      "key": "e2e-shared-key",
+      "sec": 1764000000,
+      "ms": 1,
+      "counter": 1,
+      "sender": "0102030405060708",
+      "plaintext": "",
+      "packet": "b900000000008124690100010001020304050607084049dbb40720a796"
+    },
+    {
+      "key": "e2e-shared-key",
+      "sec": 1764000000,
+      "ms": 1,
+      "counter": 2,
+      "sender": "0102030405060708",
+      "plaintext": "6f6e3d313b6c6576656c3d3730",
+      "packet": "b90d00000000812469010002000102030405060708906f57b3b809fef346d437e233c31819f814da9f7c"
+    },
+    {
+      "key": "e2e-shared-key",
+      "sec": 1764000000,
+      "ms": 1,
+      "counter": 2,
+      "sender": "1112131415161718",
+      "plaintext": "6f6e3d313b6c6576656c3d3730",
+      "packet": "b90d00000000812469010002001112131415161718615eadc83b1942522b56efeaabad60fe2fd0b137e8"
+    },
+    {
+      "key": "e2e-shared-key",
+      "sec": 1764000009,
+      "ms": 999,
+      "counter": 65535,
+      "sender": "fffefdfcfbfaf9f8",
+      "plaintext": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2021222324252627",
+      "packet": "b92800000009812469e703fffffffefdfcfbfaf9f805e08c87adfa8387f16f6d04fdaf2bfeff79971faa8b390c63bd12bfbfecd749df084e06d487a75fe1174f70f837e54f"
+    }
+  ],
+  "invalid": [
+    {
+      "kind": "message",
+      "reason": "tag bit flipped",
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "dir": 1,
+      "packet": "bb06000000008124697d0036120879acf524da1a41ab37b9c4776f"
+    },
+    {
+      "kind": "message",
+      "reason": "ciphertext bit flipped",
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "dir": 1,
+      "packet": "bb06000000008124697d0036120979acf524da1a41aa37b9c4776f"
+    },
+    {
+      "kind": "message",
+      "reason": "clock changed",
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "dir": 1,
+      "packet": "bb06000000008124697d0037120979acf524da1a41ab37b9c4776f"
+    },
+    {
+      "kind": "message",
+      "reason": "ENC relabelled ENC_E2E",
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "dir": 1,
+      "packet": "ba06000000008124697d0036120979acf524da1a41ab37b9c4776f"
+    },
+    {
+      "kind": "message",
+      "reason": "other direction",
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "dir": 2,
+      "packet": "bb06000000008124697d0036120979acf524da1a41ab37b9c4776f"
+    },
+    {
+      "kind": "message",
+      "reason": "other session key",
+      "sessionKey": "45f73ddb32d058a3da3e9f72db4bc53e",
+      "dir": 1,
+      "packet": "bb06000000008124697d0036120979acf524da1a41ab37b9c4776f"
+    },
+    {
+      "kind": "message",
+      "reason": "length one short",
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "dir": 1,
+      "packet": "bb05000000008124697d0036120979acf524da1a41ab37b9c4776f"
+    },
+    {
+      "kind": "message",
+      "reason": "trailing byte on ENC",
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "dir": 1,
+      "packet": "bb06000000008124697d0036120979acf524da1a41ab37b9c4776f00"
+    },
+    {
+      "kind": "message",
+      "reason": "milliseconds 1000",
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "dir": 1,
+      "packet": "bb0600000000812469e80336120979acf524da1a41ab37b9c4776f"
+    },
+    {
+      "kind": "message",
+      "reason": "shorter than header",
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "dir": 1,
+      "packet": "bb06000000008124697d0036120979acf524da1a"
+    },
+    {
+      "kind": "message",
+      "reason": "classic ENC_488 type",
+      "sessionKey": "96a166689a2145db1b08864174f54e10",
+      "dir": 1,
+      "packet": "b806000000008124697d0036120979acf524da1a41ab37b9c4776f"
+    },
+    {
+      "kind": "pack",
+      "reason": "tag bit flipped",
+      "key": "e2e-shared-key",
+      "packet": "b90d00000000812469010002000102030405060708916f57b3b809fef346d437e233c31819f814da9f7c"
+    },
+    {
+      "kind": "pack",
+      "reason": "sender changed",
+      "key": "e2e-shared-key",
+      "packet": "b90d00000000812469010002000002030405060708906f57b3b809fef346d437e233c31819f814da9f7c"
+    },
+    {
+      "kind": "pack",
+      "reason": "ciphertext bit flipped",
+      "key": "e2e-shared-key",
+      "packet": "b90d00000000812469010002000102030405060708906f57b3b809fef3c6d437e233c31819f814da9f7c"
+    },
+    {
+      "kind": "pack",
+      "reason": "other key",
+      "key": "secret",
+      "packet": "b90d00000000812469010002000102030405060708906f57b3b809fef346d437e233c31819f814da9f7c"
+    },
+    {
+      "kind": "pack",
+      "reason": "classic ENC_PACK type",
+      "key": "e2e-shared-key",
+      "packet": "b60d00000000812469010002000102030405060708906f57b3b809fef346d437e233c31819f814da9f7c"
+    },
+    {
+      "kind": "authReq",
+      "reason": "proof bit flipped",
+      "key": "secret",
+      "challenge": "b0008124697b003412a1b2c3d4",
+      "packet": "b46465763100000000000102030405060762bc01ab5d82448e87ebc9634b6ed508"
+    },
+    {
+      "kind": "authReq",
+      "reason": "other challenge",
+      "key": "secret",
+      "challenge": "b001812469e703000000000000",
+      "packet": "b46465763100000000000102030405060762bc01ab5d82448e87ebc9634b6ed509"
+    },
+    {
+      "kind": "authReq",
+      "reason": "other key",
+      "key": "Secret",
+      "challenge": "b0008124697b003412a1b2c3d4",
+      "packet": "b46465763100000000000102030405060762bc01ab5d82448e87ebc9634b6ed509"
+    },
+    {
+      "kind": "authReq",
+      "reason": "id changed",
+      "key": "secret",
+      "challenge": "b0008124697b003412a1b2c3d4",
+      "packet": "b46565763100000000000102030405060762bc01ab5d82448e87ebc9634b6ed509"
+    },
+    {
+      "kind": "authRes",
+      "reason": "proof bit flipped",
+      "sessionOf": 0,
+      "packet": "b5c6ff42959c567faa9f2138bbc46cf02d"
+    },
+    {
+      "kind": "authRes",
+      "reason": "client proof echoed",
+      "sessionOf": 0,
+      "packet": "b562bc01ab5d82448e87ebc9634b6ed509"
+    }
+  ]
+}

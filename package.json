@@ -1,7 +1,7 @@
 {
   "name": "boho",
-  "version": "2.2.2",
-  "description": "Secure Lightweight Encryption & Authentication Library for Node.js, Browsers and Arduino.",
+  "version": "3.0.0",
+  "description": "Shared-key authentication and encrypted messages on standard Ascon (NIST SP 800-232) for Node.js, browsers and Arduino.",
   "type": "module",
   "exports": {
     "types": "./dist/boho.d.ts",
@@ -18,7 +18,10 @@
     "crypto",
     "encryption",
     "보호",
-    "암호"
+    "암호",
+    "ascon",
+    "aead",
+    "authentication"
   ],
   "homepage": "https://github.com/remocons/boho#readme",
   "repository": {
@@ -43,10 +46,9 @@
   },
   "scripts": {
     "build": "rollup -c",
-    "test": "node --test test/*.js && npm run test:types",
+    "test": "node tools/make-vectors.mjs --check && node --test test/*.test.js && npm run test:types",
     "pretest": "npm run build",
     "test:types": "tsc -p test/types/tsconfig.json",
-    "test:arduino": "npm run build && node --test test/arduino/interop.test.js",
     "test:iosignal": "npm run build && node --import ./test/iosignal/register.js --test test/iosignal/full-flow.test.js"
   }
 }
